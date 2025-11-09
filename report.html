@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Project Plan</title>
+    
+    <!-- Use Inter font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Marked.js Library (for report rendering) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Chart.js Library (for graphs) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* --- Produck.com Design System --- */
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121212;
+            color: #e5e5e5;
+            line-height: 1.6;
+            padding: 2rem;
+            overflow-x: hidden;
+            background-image: linear-gradient(180deg, #181818 0%, #121212 100%);
+            min-height: 100vh;
+        }
+
+        /* --- 1. Background Effects (Grain, Grid, Orbs) --- */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 1;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+            opacity: 0.15;
+            mix-blend-mode: overlay;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.03;
+            background-image: 
+                linear-gradient(rgba(250, 204, 21, 0.24) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(250, 204, 21, 0.24) 1px, transparent 1px);
+            background-size: 100px 100px, 100px 100px;
+        }
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        .fixed-decor {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .orb-1 {
+            position: absolute;
+            top: -120px;
+            left: -120px;
+            width: 480px;
+            height: 480px;
+            border-radius: 100%;
+            opacity: 0.06;
+            filter: blur(72px);
+            background: radial-gradient(circle, rgba(250, 204, 21, 0.24) 0%, transparent 70%);
+            animation: float 25s ease-in-out infinite;
+        }
+        .orb-2 {
+            position: absolute;
+            bottom: -180px;
+            right: -180px;
+            width: 420px;
+            height: 420px;
+            border-radius: 100%;
+            opacity: 0.06;
+            filter: blur(72px);
+            background: radial-gradient(circle, rgba(250, 204, 21, 0.24) 0%, transparent 70%);
+            animation: float-slow 30s ease-in-out infinite;
+        }
+        .mouse-glow {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+            transition: all 300ms ease-out;
+            background: radial-gradient(360px circle at 50% 50%, rgba(250, 204, 21, 0.048) 0%, transparent 70%);
+        }
+        .scanlines {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 60;
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255, 255, 255, 0.03) 2px, rgba(255, 255, 255, 0.03) 4px);
+            opacity: 0.1;
+        }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(20px, -20px) rotate(2deg); }
+            50% { transform: translate(-10px, -30px) rotate(-2deg); }
+            75% { transform: translate(-20px, -10px) rotate(1deg); }
+        }
+        @keyframes float-slow {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(-30px, 20px) rotate(-3deg); }
+            50% { transform: translate(15px, 40px) rotate(3deg); }
+            75% { transform: translate(25px, 15px) rotate(-2deg); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- 3. Core UI Components --- */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+        
+        .header { 
+            padding: 1.5rem 2rem; 
+            text-align: center;
+        }
+        .header h1 { 
+            font-size: 2rem;
+            font-weight: 900;
+            color: #facc15;
+            filter: drop-shadow(0 0 30px rgba(250, 204, 21, 0.36));
+            text-shadow: 0 0 20px rgba(250, 204, 21, 0.18), 0 0 40px rgba(250, 204, 21, 0.09);
+        }
+        .header p { 
+            font-size: 1rem; 
+            color: #d4d4d4; 
+        }
+
+        /* Results Area */
+        #results-area { 
+            padding-top: 1rem;
+        }
+        
+        #loading-message { 
+            display: none; 
+            padding: 1rem; 
+            background-color: rgba(250, 204, 21, 0.05);
+            border: 1px solid rgba(250, 204, 21, 0.3);
+            border-radius: 8px; 
+            text-align: center; 
+            font-weight: 500; 
+            color: #facc15;
+            margin-bottom: 1rem; 
+            box-shadow: 0 0 15px rgba(250, 204, 21, 0.1);
+        }
+
+        /* --- 5. Markdown Report Styling --- */
+        #report-output {
+            line-height: 1.7;
+            padding: 2rem 2.5rem;
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.7) 0%, rgba(15, 15, 15, 0.6) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border-radius: 16px;
+        }
+        #report-output h1 { 
+            font-size: 1.8rem; 
+            font-weight: 900;
+            margin-top: 1.5rem; 
+            margin-bottom: 1rem; 
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1); 
+            padding-bottom: 0.5rem; 
+            color: #facc15;
+        }
+        #report-output h2 { 
+            font-size: 1.5rem; 
+            font-weight: 700;
+            margin-top: 1.5rem; 
+            margin-bottom: 1rem; 
+            color: #ffffff;
+        }
+        #report-output h3 { 
+            font-size: 1.2rem; 
+            font-weight: 700; 
+            margin-top: 1rem; 
+            margin-bottom: 0.5rem; 
+            color: #e5e5e5;
+        }
+        #report-output ul, #report-output ol { 
+            margin-left: 1.5rem; 
+            margin-bottom: 1rem; 
+        }
+        #report-output li { margin-bottom: 0.5rem; }
+        #report-output p { 
+            margin-bottom: 1rem; 
+            color: #d4d4d4; 
+        }
+        #report-output blockquote {
+            padding: 0.8rem 1rem;
+            margin-bottom: 1rem;
+            background-color: rgba(250, 204, 21, 0.05);
+            border-left: 4px solid #facc15;
+            color: #e5e5e5;
+            font-style: italic;
+        }
+        #report-output table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        #report-output th, #report-output td {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.6rem;
+            text-align: left;
+        }
+        #report-output th {
+            background-color: rgba(255, 255, 255, 0.05);
+            font-weight: 600;
+        }
+        
+        /* Chart.js Container */
+        .chart-container {
+            position: relative;
+            margin: 1rem auto;
+            max-width: 800px; /* Stretched for readability */
+        }
+        #report-output canvas {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+        
+        /* Gantt Chart Styling */
+        .gantt-chart-container {
+            width: 100%;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+        }
+        .gantt-chart {
+            width: 100%;
+            min-width: 800px; 
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .gantt-chart th, .gantt-chart td {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.5rem;
+            height: 36px;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+        .gantt-chart th {
+            background-color: rgba(255, 255, 255, 0.05);
+            font-weight: 600;
+            color: #e5e5e5;
+        }
+        .gantt-chart th:first-child,
+        .gantt-chart td:first-child {
+            text-align: left;
+            width: 25%;
+            font-weight: 500;
+            color: #d4d4d4;
+        }
+        .gantt-row {
+            position: relative;
+            padding: 0 !important;
+        }
+        .gantt-bar {
+            position: absolute;
+            top: 5px;
+            bottom: 5px;
+            background-color: rgba(250, 204, 21, 0.6);
+            border: 1px solid #facc15;
+            border-radius: 4px;
+            z-index: 10;
+        }
+        .gantt-bar-label {
+            position: absolute;
+            left: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.75rem;
+            color: #000;
+            font-weight: 600;
+            z-index: 11;
+            white-space: nowrap;
+        }
+
+        
+        /* Error Message */
+        .error-message {
+            display: block; 
+            padding: 1rem; 
+            background-color: rgba(255, 75, 75, 0.1);
+            border: 1px solid rgba(255, 75, 75, 0.3);
+            border-radius: 8px; 
+            text-align: center; 
+            font-weight: 500; 
+            color: #ff6b6b;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- All decorative background elements -->
+    <div class="mouse-glow"></div>
+    <div class="scanlines"></div>
+    <div class="fixed-decor">
+        <canvas id="particle-canvas"></canvas>
+        <div class="orb-1"></div>
+        <div class="orb-2"></div>
+    </div>
+    
+    <!-- Main App Container -->
+    <div class="container">
+        <div class="header">
+            <h1>AI Project Plan</h1>
+            <p>Your comprehensive plan is being generated. Please wait.</p>
+        </div>
+
+        <div id="results-area">
+            <div id="loading-message">
+                <!-- Status updates will appear here -->
+            </div>
+            <div id="report-output">
+                <!-- The final report will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. CORE APP LOGIC (Polling, Fetching, Charting) ---
+        
+        const API_BASE_URL = "http://127.0.0.1:5000";
+
+        document.addEventListener("DOMContentLoaded", () => {
+            
+            const loadingMessage = document.getElementById("loading-message");
+            const reportOutput = document.getElementById("report-output");
+            let pollingInterval; 
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const job_id = urlParams.get('job_id');
+
+            if (job_id) {
+                loadingMessage.style.display = "block";
+                loadingMessage.innerText = "Connecting to job...";
+                startPolling(job_id);
+            } else {
+                handleError("No project ID provided. Please start from 'form.html' page.");
+            }
+            
+            function startPolling(job_id) {
+                pollingInterval = setInterval(() => {
+                    checkJobStatus(job_id);
+                }, 2000); 
+            }
+
+            async function checkJobStatus(job_id) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/v1/project-status/${job_id}`);
+                    if (!response.ok) {
+                        throw new Error(`Status check failed. Server responded with ${response.status}`);
+                    }
+                    const data = await response.json();
+
+                    switch (data.status) {
+                        case "processing":
+                            loadingMessage.innerText = `Working... (Step: ${data.current_task})`;
+                            break;
+                        
+                        case "complete":
+                            clearInterval(pollingInterval);
+                            loadingMessage.style.display = "none";
+                            
+                            const markdownReport = data.final_report;
+                            reportOutput.innerHTML = marked.parse(markdownReport);
+                            
+                            renderEmbeddedCharts(); 
+                            renderEmbeddedGantt(); 
+                            break;
+                        
+                        case "failed":
+                            throw new Error(data.error_message || "The job failed.");
+                        
+                        case "pending":
+                        default:
+                            loadingMessage.innerText = "Your project is in the queue...";
+                            break;
+                    }
+                } catch (error) {
+                    handleError(error.message);
+                }
+            }
+
+            function handleError(message) {
+                if (pollingInterval) clearInterval(pollingInterval); 
+                loadingMessage.style.display = "block";
+                loadingMessage.classList.add("error-message"); 
+                loadingMessage.innerText = `Error: ${message}. Is the Python server running?`;
+                reportOutput.innerHTML = "";
+            }
+
+            // --- FIXED: Gantt Chart Rendering Function ---
+            function renderEmbeddedGantt() {
+                const ganttContainer = document.querySelector('.gantt-chart-container');
+                if (!ganttContainer) return;
+
+                const table = ganttContainer.querySelector('table');
+                if (!table) return;
+                
+                // Get total weeks from the last header's text
+                const lastHeader = table.querySelector('thead th:last-child');
+                if (!lastHeader) return;
+                
+                const totalWeeksMatch = lastHeader.innerText.match(/(\d+)/g);
+                const totalWeeks = totalWeeksMatch ? parseInt(totalWeeksMatch[totalWeeksMatch.length - 1], 10) : 36;
+                
+                if (totalWeeks === 0) return;
+
+                const bars = table.querySelectorAll('span[data-start-week]');
+                bars.forEach(bar => {
+                    const start = parseInt(bar.dataset.startWeek, 10);
+                    const duration = parseInt(bar.dataset.duration, 10);
+                    const label = bar.dataset.label || '';
+
+                    const cell = bar.closest('td.gantt-row');
+                    if (cell) {
+                        const barDiv = document.createElement('div');
+                        barDiv.className = 'gantt-bar';
+                        
+                        // --- NEW LOGIC ---
+                        barDiv.style.left = `${((start - 1) / totalWeeks) * 100}%`;
+                        barDiv.style.width = `${(duration / totalWeeks) * 100}%`;
+                        
+                        const barLabel = document.createElement('span');
+                        barLabel.className = 'gantt-bar-label';
+                        barLabel.innerText = label;
+                        barDiv.appendChild(barLabel);
+
+                        cell.appendChild(barDiv);
+                        bar.remove(); // Remove the original placeholder
+                    }
+                });
+            }
+
+            // --- CHART RENDERING FUNCTION ---
+            function renderEmbeddedCharts() {
+                Chart.defaults.color = '#e5e5e5';
+                Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+
+                const chartColors = [
+                    '#facc15', // yellow-500
+                    '#22c55e', // green-500
+                    '#3b82f6', // blue-500
+                    '#ec4899', // pink-500
+                    '#a855f7', // purple-500
+                    '#14b8a6', // teal-500
+                    '#f59e0b', // amber-500
+                    '#ef4444', // red-500
+                ];
+                // 1. UPDATED: Single color for bar/line charts
+                const singleChartColor = 'rgba(250, 204, 21, 0.6)';
+                const singleChartBorder = '#facc15';
+
+                const allCanvases = reportOutput.querySelectorAll('canvas[data-chart-type]');
+                
+                allCanvases.forEach(canvas => {
+                    const ctx = canvas.getContext('2d');
+                    const type = canvas.dataset.chartType;
+                    const title = canvas.dataset.chartTitle;
+                    
+                    const labels = JSON.parse(canvas.dataset.chartLabels);
+                    const values = JSON.parse(canvas.dataset.chartValues);
+
+                    const container = document.createElement('div');
+                    container.className = 'chart-container';
+                    container.style.maxWidth = '800px';
+
+                    canvas.parentNode.insertBefore(container, canvas);
+                    container.appendChild(canvas);
+
+                    let config = {};
+
+                    if (type === 'bar') {
+                        config = {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Value',
+                                    data: values,
+                                    backgroundColor: singleChartColor, // 1. Use single color
+                                    borderColor: singleChartBorder,
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: { display: false }, 
+                                    title: { display: true, text: title, font: { size: 16 } }
+                                }
+                            }
+                        };
+                    } else if (type === 'doughnut') {
+                        config = {
+                            type: 'doughnut',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    data: values,
+                                    backgroundColor: chartColors, // Use multi-color
+                                    borderColor: '#121212',
+                                    borderWidth: 2,
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: { display: false }, 
+                                    title: { display: true, text: title, font: { size: 16 } }
+                                }
+                            }
+                        };
+                    } else if (type === 'horizontalBar') {
+                        // 4. THIS IS THE BUDGET/TIMELINE CHART
+                        config = {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Value',
+                                    data: values,
+                                    backgroundColor: singleChartColor, // 1. Use single color
+                                    borderColor: singleChartBorder,
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                indexAxis: 'y', // This makes it horizontal
+                                responsive: true,
+                                plugins: {
+                                    legend: { display: false },
+                                    title: { display: true, text: title, font: { size: 16 } }
+                                }
+                            }
+                        };
+                    } else if (type === 'line') {
+                        // 1. USER ADOPTION GRAPH
+                        config = {
+                            type: 'line',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Registered Users',
+                                    data: values,
+                                    backgroundColor: 'rgba(250, 204, 21, 0.1)', // 1. Use yellow
+                                    borderColor: '#facc15',
+                                    borderWidth: 2,
+                                    fill: true,
+                                    tension: 0.3
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: { display: false },
+                                    title: { display: true, text: title, font: { size: 16 } }
+                                },
+                                scales: {
+                                    y: { beginAtZero: true }
+                                }
+                            }
+                        };
+                    }
+
+                    if (Object.keys(config).length > 0) {
+                        new Chart(ctx, config);
+                    }
+                });
+            }
+
+        });
+
+        // --- 2. "PRODUCK" DECORATIVE JAVASCRIPT ---
+        const mouseGlow = document.querySelector('.mouse-glow');
+        document.addEventListener('mousemove', (e) => {
+            requestAnimationFrame(() => {
+                if (!mouseGlow) return;
+                mouseGlow.style.background = `radial-gradient(
+                    360px circle at ${e.clientX}px ${e.clientY}px,
+                    rgba(250, 204, 21, 0.048) 0%,
+                    transparent 70%
+                )`;
+            });
+        });
+
+        const canvas = document.getElementById('particle-canvas');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            let particles = [];
+            let particleCount;
+
+            const setupCanvas = () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                particleCount = 30;
+                particles = [];
+                for (let i = 0; i < particleCount; i++) {
+                    particles.push(new Particle());
+                }
+            };
+
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.radius = Math.random() * 1.2 + 0.3;
+                    this.opacity = Math.random() * 0.12 + 0.03;
+                    this.vx = Math.random() * 0.2 - 0.1;
+                    this.vy = Math.random() * 0.2 - 0.1;
+                }
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+                    ctx.fillStyle = `rgba(250, 204, 21, ${this.opacity})`;
+                    ctx.fill();
+                }
+                update(wave) {
+                    this.x += this.vx + Math.sin(wave.y / 30) * 0.1;
+                    this.y += this.vy + Math.cos(wave.x / 40) * 0.1;
+                    if (this.x < 0) this.x = canvas.width;
+                    if (this.x > canvas.width) this.x = 0;
+                    if (this.y < 0) this.y = canvas.height;
+                    if (this.y > canvas.height) this.y = 0;
+                    this.draw();
+                }
+            }
+            let wave = { x: 0, y: 0 };
+            const animate = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                wave.x += 0.01; wave.y += 0.015;
+                particles.forEach(p => p.update(wave));
+                requestAnimationFrame(animate);
+            };
+            window.addEventListener('resize', setupCanvas);
+            setupCanvas();
+            animate();
+        }
+    </script>
+
+</body>
+</html>
