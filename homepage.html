@@ -326,15 +326,12 @@
                 <!-- Logo -->
                 <a href="#" class="flex items-center gap-2 group"> <!-- Reduced gap -->
                     <!-- Simple Duck SVG Icon -->
-                    <svg class="w-6 h-6 text-yellow-400 group-hover:text-yellow-300 drop-shadow-yellow-sm transition-all" <!-- Reduced size -->
-                         viewBox="0 0 32 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M22.3 3.1c-1-2.1-3.6-2.9-5.7-1.9l-8.6 4c-2.1 1-2.9 3.6-1.9 5.7l2.8 5.7c-2.7 1.4-4.8 3.9-5.7 7.1C3 24.3 3 24.7 3 25c0 1.7 1.3 3 3 3h1c1.7 0 3-1.3 3-3 0-2.8 2.2-5 5-5s5 2.2 5 5c0 1.7 1.3 3 3 3h1c1.7 0 3-1.3 3-3 0-.3 0-.7-.1-1.1-.9-3.1-2.9-5.7-5.7-7.1l2.8-5.7c1-2.1.2-4.7-1.9-5.7l-1.7-3zM7 25c0 .6-.4 1-1 1H5c-.6 0-1-.4-1-1s.4-1 1-1h1c.6 0 1 .4 1 1zm15 0c0 .6-.4 1-1 1h-1c-.6 0-1-.4-1-1s.4-1 1-1h1c.6 0 1 .4 1 1zM10 10c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"/>
-                    </svg>
+                    <img src="produck.png" alt="Produck logo" class="w-6 h-6 drop-shadow-yellow-sm transition-all" loading="lazy" decoding="async" />
                     <span class="text-white font-bold text-lg drop-shadow-yellow-sm">Produck.com</span> <!-- Reduced size -->
                 </a>
                 
                 <!-- Nav Links -->
-                <div class="hidden md:flex items-center gap-4"> <!-- Reduced gap -->
+                <div class="hidden md:flex items-center gap-10"> <!-- Reduced gap -->
                     <a href="#" class="text-neutral-300 hover:text-white transition">Features</a>
                     <a href="#" class="text-neutral-300 hover:text-white transition">Pricing</a>
                     <a href="#" class="text-neutral-300 hover:text-white transition">About</a>
@@ -347,59 +344,68 @@
             </div>
         </nav>
 
-        <!-- HERO SECTION -->
-        <main class="flex flex-col items-center justify-center text-center py-16 md:py-24 min-h-screen"> <!-- Changed from min-h-[80vh] -->
-            <!-- Hero Title -->
-            <h1 class="font-black text-3xl md:text-5xl lg:text-6xl text-white text-glow-yellow drop-shadow-yellow-lg animate-fade-in" style="animation-delay: 0.2s;"> <!-- Reduced size -->
-                Get Your Ducks in a Row.
-            </h1>
-            
-            <!-- Subtitle -->
-            <p class="text-base md:text-lg text-neutral-300 max-w-xl mt-4 animate-fade-in" style="animation-delay: 0.4s;"> <!-- Reduced size, max-w, margin -->
-                The all-in-one platform for project management.
-                Track budgets, manage stakeholders, and deliver results without the chaos.
-            </p>
+    <!-- HERO SECTION -->
+    <main class="flex flex-col md:flex-row items-start md:items-center justify-center md:justify-between text-left py-16 md:py-24 min-h-[80vh] max-w-7xl mx-auto"> <!-- MODIFIED: Changed justify/gap settings -->
+            <!-- LEFT: Title, Subtitle, CTA, Stats -->
+            <div class="md:w-1/2 w-full"> <!-- MODIFIED: Removed md:pr-8 and md:ml-20 -->
+                <!-- Hero Title -->
+                <h1 class="font-black text-3xl md:text-5xl lg:text-6xl text-white text-glow-yellow drop-shadow-yellow-lg animate-fade-in" style="animation-delay: 0.2s;">
+                    Produck
+                </h1>
 
-            <!-- Hero CTA -->
-            <a href="#" class="mt-6 px-5 py-2 bg-yellow-400 text-black text-base font-bold rounded-lg shadow-lg shadow-yellow-400/20 transition-all
-                                hover:bg-yellow-300 hover:shadow-yellow-300/40 hover:scale-105 animate-fade-in" style="animation-delay: 0.6s;"> <!-- Reduced margin, padding, size, radius -->
-                Get Started
-            </a>
+                <!-- Subtitle -->
+                <p class="text-base md:text-lg text-neutral-300 max-w-lg mt-4 animate-fade-in" style="animation-delay: 0.4s;">
+                    The ultimate project management tool to get your ducks in a row. Manage budgets, stakeholders, and timelines all in one place.
+                </p>
 
-            <!-- Statistics Cards -->
-            <div class="mt-12 md:mt-20 grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl"> <!-- Reduced margin, gap, max-w -->
-                <!-- Stat 1 -->
-                <div class="glass-card rounded-2xl p-4 hover-glow-effect animate-fade-in" style="animation-delay: 0.8s;"> <!-- Reduced radius, padding -->
-                    <div class="text-yellow-400 font-black text-2xl drop-shadow-yellow-md transition-transform group-hover:scale-110"> <!-- Reduced size -->
-                        $10B+
+                <!-- Hero CTA -->
+                <a href="#" class="mt-6 inline-block px-5 py-2 bg-yellow-400 text-black text-base font-bold rounded-lg shadow-lg shadow-yellow-400/20 transition-all hover:bg-yellow-300 hover:shadow-yellow-300/40 hover:scale-105 animate-fade-in" style="animation-delay: 0.6s;">
+                    Get Started
+                </a>
+
+                <!-- Statistics Cards (kept inside left column) -->
+                <div class="mt-12 md:mt-16 grid grid-cols-1 md:grid-cols-3 gap-4 w-full"> <!-- kept layout, slightly adjusted spacing -->
+                    <!-- Stat 1 -->
+                    <div class="glass-card rounded-2xl p-4 hover-glow-effect animate-fade-in" style="animation-delay: 0.8s;">
+                        <div class="text-yellow-400 font-black text-2xl drop-shadow-yellow-md transition-transform group-hover:scale-110">
+                            $10B+
+                        </div>
+                        <div class="text-neutral-300 text-xs uppercase tracking-wider mt-1">
+                            Budgets Managed
+                        </div>
                     </div>
-                    <div class="text-neutral-300 text-xs uppercase tracking-wider mt-1"> <!-- Reduced size, margin -->
-                        Budgets Managed
+                    <!-- Stat 2 -->
+                    <div class="glass-card rounded-2xl p-4 hover-glow-effect animate-fade-in" style="animation-delay: 1.0s;">
+                        <div class="text-yellow-400 font-black text-2xl drop-shadow-yellow-md transition-transform group-hover:scale-110">
+                            1.2M+
+                        </div>
+                        <div class="text-neutral-300 text-xs uppercase tracking-wider mt-1">
+                            Happy Stakeholders
+                        </div>
+                    </div>
+                    <!-- Stat 3 -->
+                    <div class="glass-card rounded-2xl p-4 hover-glow-effect animate-fade-in" style="animation-delay: 1.2s;">
+                        <div class="text-yellow-400 font-black text-2xl drop-shadow-yellow-md transition-transform group-hover:scale-110">
+                            500k
+                        </div>
+                        <div class="text-neutral-300 text-xs uppercase tracking-wider mt-1">
+                            Projects Launched
+                        </div>
                     </div>
                 </div>
-                <!-- Stat 2 -->
-                <div class="glass-card rounded-2xl p-4 hover-glow-effect animate-fade-in" style="animation-delay: 1.0s;"> <!-- Reduced radius, padding -->
-                    <div class="text-yellow-400 font-black text-2xl drop-shadow-yellow-md transition-transform group-hover:scale-110"> <!-- Reduced size -->
-                        1.2M+
-                    </div>
-                    <div class="text-neutral-300 text-xs uppercase tracking-wider mt-1"> <!-- Reduced size, margin -->
-                        Happy Stakeholders
-                    </div>
-                </div>
-                <!-- Stat 3 -->
-                <div class="glass-card rounded-2xl p-4 hover-glow-effect animate-fade-in" style="animation-delay: 1.2s;"> <!-- Reduced radius, padding -->
-                    <div class="text-yellow-400 font-black text-2xl drop-shadow-yellow-md transition-transform group-hover:scale-110"> <!-- Reduced size -->
-                        500k
-                    </div>
-                    <div class="text-neutral-300 text-xs uppercase tracking-wider mt-1"> <!-- Reduced size, margin -->
-                        Projects Launched
-                    </div>
+            </div>
+
+            <!-- RIGHT: Decorative Duck Illustration -->
+            <div class="md:w-1/2 w-full mt-8 md:mt-0 flex justify-center md:justify-center items-center"> <!-- MODIFIED: Removed negative margin, centered content -->
+                <div class="animate-fade-in relative z-20" style="animation-delay: 0.4s;">
+                    <!-- Large Duck image (uses duck.png in same folder). Keep animation via inline style. -->
+                    <img src="produck.png" alt="Decorative duck" loading="lazy" decoding="async" class="w-48 h-48 md:w-64 md:h-64 object-contain drop-shadow-yellow-lg" style="animation: float 6s ease-in-out infinite;" />
                 </div>
             </div>
         </main>
 
         <!-- FEATURES SECTION -->
-        <section class="py-16 max-w-5xl mx-auto min-h-screen flex flex-col justify-center" id="features"> <!-- Added min-h-screen and flex properties -->
+        <section class="py-16 max-w-5xl mx-auto" id="features"> <!-- Reduced padding, max-w -->
             <div class="text-center mb-10"> <!-- Reduced margin -->
                 <h2 class="font-black text-2xl md:text-3xl text-white text-glow-yellow drop-shadow-yellow-lg animate-fade-in"> <!-- Reduced size -->
                     All-in-One Project Hub
