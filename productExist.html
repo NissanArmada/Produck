@@ -294,6 +294,46 @@
             transform: translateY(-2px);
         }
 
+        /* Details panel */
+        #project-details {
+            margin-top: 2rem;
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+            background: linear-gradient(135deg, rgba(25,25,25,0.72) 0%, rgba(15,15,15,0.62) 100%);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+            border-radius: 16px;
+            padding: 1.5rem 1.75rem 2rem;
+        }
+        #project-details h3 {
+            margin: 0 0 1rem 0;
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #facc15;
+            text-shadow: 0 0 16px rgba(250,204,21,0.24);
+        }
+        .detail-meta { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; }
+        .detail-chip {
+            background: rgba(250,204,21,0.1);
+            border: 1px solid rgba(250,204,21,0.3);
+            color: #facc15;
+            padding: .4rem .7rem;
+            font-size: .75rem;
+            border-radius: 20px;
+            letter-spacing: .5px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+        }
+        .detail-section { margin-bottom: 1.5rem; }
+        .detail-section h4 { font-size: .9rem; text-transform: uppercase; letter-spacing: 1px; font-weight:700; margin:0 0 .5rem; color:#d4d4d4; }
+        .detail-list { list-style:none; margin:0; padding:0; max-height:180px; overflow-y:auto; }
+        .detail-list li { padding:.5rem .6rem; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.3); border-radius:8px; margin-bottom:.4rem; font-size:.8rem; }
+        .detail-empty { font-style:italic; opacity:.7; }
+
     </style>
 </head>
 <body>
@@ -374,6 +414,8 @@
             <ul id="project-list">
                 <!-- Projects will be injected here by JS -->
             </ul>
+            <!-- Project Details -->
+            <div id="project-details"></div>
         </div>
 
     </div>
@@ -520,6 +562,9 @@
             const loader = document.getElementById('loader');
             const projectList = document.getElementById('project-list');
             const useProxyEl = document.getElementById('use-proxy');
+            const detailsPanel = document.getElementById('project-details');
+
+            let lastAuth = null; // { domain, email, token, useProxy }
 
             function normalizeDomain(raw) {
                 let d = (raw || '').trim();
@@ -562,6 +607,7 @@
                 errorMessage.style.display = 'none';
                 resultsContainer.style.display = 'block'; // Show container to show loader
                 projectList.innerHTML = '';
+                if (detailsPanel) { detailsPanel.style.display = 'none'; detailsPanel.innerHTML = ''; }
 
                 // 2. Validate
                 if (!domain || !email || !token) {
@@ -597,6 +643,9 @@
                         populateResults(simulatedProjects);
                         showError("Simulated data shown. For real Jira results, check 'Use local proxy' and click Fetch.", "info");
                     }
+
+                    // Save credentials for subsequent detail fetches
+                    lastAuth = { domain, email, token, useProxy };
 
 
                 } catch (error) {
@@ -650,15 +699,71 @@
                 fetchButton.textContent = 'Connect & Fetch Projects';
             }
             
-            // Add click listener to list for future use
-            projectList.addEventListener('click', (e) => {
+            async function fetchProjectDetailsViaProxy(projectIdOrKey) {
+                const { domain, email, token } = lastAuth || {};
+                const resp = await fetch('http://localhost:3000/api/jira/project/details', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain, email, apiToken: token, projectIdOrKey })
+                });
+                if (!resp.ok) {
+                    let text = await resp.text();
+                    try { const json = JSON.parse(text); text = json.error || text; } catch(_){}
+                    throw new Error(`Proxy error (${resp.status}): ${text}`);
+                }
+                return resp.json();
+            }
+
+            function renderProjectDetails(payload, headerLabel) {
+                if (!detailsPanel) return;
+                const { project, components = [], versions = [] } = payload || {};
+
+                const safe = (v) => (v == null ? '' : String(v));
+                const lead = (project && project.lead) || {};
+                const rows = [];
+                rows.push(`<div class="detail-meta">
+                    <span class="detail-chip">Key: ${safe(project && project.key)}</span>
+                    <span class="detail-chip">Type: ${safe(project && project.projectTypeKey)}</span>
+                    <span class="detail-chip">Visibility: ${project && project.isPrivate ? 'Private' : 'Public'}</span>
+                    <span class="detail-chip">ID: ${safe(project && project.id)}</span>
+                </div>`);
+
+                rows.push(`<div class="detail-section"><h4>Lead</h4>
+                    <div class="detail-list">
+                        <div class="detail-empty" style="${lead && (lead.displayName || lead.emailAddress) ? 'display:none' : ''}">No lead information</div>
+                        <ul class="detail-list" style="list-style:none; ${lead && (lead.displayName || lead.emailAddress) ? '' : 'display:none'}">
+                            <li>Name: ${safe(lead.displayName)}</li>
+                            <li>Email: ${safe(lead.emailAddress)}</li>
+                        </ul>
+                    </div>
+                </div>`);
+
+                const compItems = (components || []).slice(0, 10).map(c => `<li>${safe(c.name)}${c.description ? ` — ${safe(c.description)}` : ''}</li>`).join('');
+                rows.push(`<div class="detail-section"><h4>Components (${components ? components.length : 0})</h4>
+                    ${components && components.length ? `<ul class="detail-list">${compItems}</ul>` : `<div class="detail-empty">No components</div>`}
+                </div>`);
+
+                const verItems = (versions || []).slice(0, 10).map(v => `<li>${safe(v.name)}${v.released ? ' (released)' : ''}${v.archived ? ' (archived)' : ''}</li>`).join('');
+                rows.push(`<div class="detail-section"><h4>Versions (${versions ? versions.length : 0})</h4>
+                    ${versions && versions.length ? `<ul class="detail-list">${verItems}</ul>` : `<div class="detail-empty">No versions</div>`}
+                </div>`);
+
+                detailsPanel.innerHTML = `
+                    <h3>${headerLabel || (project && project.name) || 'Project Details'}</h3>
+                    ${rows.join('')}
+                `;
+                detailsPanel.style.display = 'block';
+                detailsPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            // Click on project to show details
+            projectList.addEventListener('click', async (e) => {
                 if (e.target && e.target.tagName === 'LI') {
                     const projectId = e.target.dataset.projectId;
                     const projectName = e.target.textContent;
                     console.log(`Selected project: ${projectName} (ID: ${projectId})`);
-                    
-                    // In a real app, you'd now import this.
-                    // We'll just show a message.
+
+                    // Active item visuals
                     const allItems = projectList.querySelectorAll('li');
                     allItems.forEach(item => {
                         item.style.opacity = '0.5';
@@ -667,6 +772,33 @@
                     e.target.style.opacity = '1';
                     e.target.style.backgroundColor = 'rgba(250, 204, 21, 0.1)';
                     e.target.style.borderColor = '#facc15';
+
+                    // If we don’t have auth saved yet, ask user to fetch first
+                    if (!lastAuth) {
+                        showError('Please fetch projects first.');
+                        return;
+                    }
+
+                    if (lastAuth.useProxy) {
+                        try {
+                            showError('', 'info'); errorMessage.style.display = 'none';
+                            if (detailsPanel) { detailsPanel.style.display = 'block'; detailsPanel.innerHTML = '<div class="detail-empty">Loading details…</div>'; }
+                            const payload = await fetchProjectDetailsViaProxy(projectId);
+                            renderProjectDetails(payload, projectName);
+                        } catch (err) {
+                            console.error('Details error:', err);
+                            showError(`Could not load details: ${err.message}`);
+                        }
+                    } else {
+                        // Simulated details when not using proxy
+                        const simulated = {
+                            project: { id: projectId, key: projectName.match(/\((.*?)\)/)?.[1] || 'KEY', name: projectName.replace(/\(.*\)/,'').trim(), projectTypeKey: 'software', isPrivate: false, lead: { displayName: 'Jane Doe', emailAddress: 'jane.doe@example.com' } },
+                            components: [{ name: 'Frontend' }, { name: 'Backend' }],
+                            versions: [{ name: 'v1.0', released: true }, { name: 'v1.1' }]
+                        };
+                        renderProjectDetails(simulated, projectName);
+                        showError("Showing simulated details. Enable 'Use local proxy' for live Jira data.", 'info');
+                    }
                 }
             });
 

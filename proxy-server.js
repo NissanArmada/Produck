@@ -38,6 +38,54 @@ app.post('/api/jira/projects', async (req, res) => {
   }
 });
 
+// Aggregated project details (basic project + components + versions)
+app.post('/api/jira/project/details', async (req, res) => {
+  try {
+    const { domain, email, apiToken, projectIdOrKey } = req.body || {};
+    if (!domain || !email || !apiToken || !projectIdOrKey) {
+      return res.status(400).json({ error: 'Missing domain, email, apiToken, or projectIdOrKey' });
+    }
+
+    const auth = Buffer.from(`${email}:${apiToken}`).toString('base64');
+    const base = `https://${domain}`;
+
+    const headers = {
+      'Authorization': `Basic ${auth}`,
+      'Accept': 'application/json'
+    };
+
+    // Fetch all three in parallel
+    const [projResp, compsResp, versResp] = await Promise.all([
+      fetch(`${base}/rest/api/3/project/${encodeURIComponent(projectIdOrKey)}?expand=lead,url`, { headers }),
+      fetch(`${base}/rest/api/3/project/${encodeURIComponent(projectIdOrKey)}/components`, { headers }),
+      fetch(`${base}/rest/api/3/project/${encodeURIComponent(projectIdOrKey)}/versions`, { headers })
+    ]);
+
+    const projText = await projResp.text();
+    const compsText = await compsResp.text();
+    const versText = await versResp.text();
+
+    if (!projResp.ok) {
+      return res.status(projResp.status).send(projText);
+    }
+    if (!compsResp.ok) {
+      return res.status(compsResp.status).send(compsText);
+    }
+    if (!versResp.ok) {
+      return res.status(versResp.status).send(versText);
+    }
+
+    const project = JSON.parse(projText);
+    const components = JSON.parse(compsText);
+    const versions = JSON.parse(versText);
+
+    res.json({ project, components, versions });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Proxy error', details: String((err && err.message) || err) });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Proxy server listening on http://localhost:${PORT}`);
