@@ -93,6 +93,11 @@
             background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255, 255, 255, 0.03) 2px, rgba(255, 255, 255, 0.03) 4px);
             opacity: 0.1;
         }
+.mouse-glow, 
+.scanlines, 
+.fixed-decor {
+    pointer-events: none !important;
+}
         @keyframes float {
             0%, 100% { transform: translate(0, 0) rotate(0deg); }
             25% { transform: translate(20px, -20px) rotate(2deg); }
@@ -214,6 +219,74 @@
             color: #ff6b6b;
             margin-top: 1rem;
         }
+        #app-layout {
+            display: flex;
+            gap: 2rem;
+            max-width: 1100px; /* Increased max width for the two columns */
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+
+/* In your <style> block inside form.html */
+#chat-sidebar {
+    /* Make the chat/duck an overlay fixed to the bottom-right corner */
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 260px;
+    max-width: calc(100vw - 48px);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    /* Make sidebar visually transparent per request */
+    background: rgba(0,0,0,0.0); /* fully transparent */
+    border: none;
+    border-radius: 8px;
+    box-shadow: none;
+    backdrop-filter: none;
+    z-index: 9999; /* Place above decorative layers */
+}
+
+        #voiceToggleContainer {
+            cursor: pointer;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 12px;
+            background: rgba(250, 204, 21, 0.05); /* Light yellow background */
+            transition: transform 0.2s;
+            position: relative; 
+    z-index: 999; /* The absolute highest priority */
+        }
+        #voiceToggleContainer:hover {
+            transform: scale(1.03);
+            background: rgba(250, 204, 21, 0.1);
+        }
+        #agentImage {
+            width: 120px;
+            height: auto;
+        }
+        /* Hide the chat transcript area text per user's preference */
+        #chat-messages {
+            display: none;
+        }
+        #chat-messages p { margin: 5px 0; }
+        #stopButton { display: none; } /* Hide initially */
+
+        /* Highlight for active field when duck asks for it */
+        .field-highlight {
+            box-shadow: 0 0 0 3px rgba(250,204,21,0.12), 0 8px 30px rgba(250,204,21,0.12);
+            border-color: rgba(250,204,21,0.6) !important;
+            transition: box-shadow 220ms ease, border-color 220ms ease, transform 120ms ease;
+            transform: translateY(-2px);
+        }
+        .field-highlight-label {
+            color: #facc15 !important;
+            text-shadow: 0 0 6px rgba(250,204,21,0.28);
+        }
     </style>
 </head>
 <body>
@@ -235,7 +308,7 @@
 
         <form id="project-form">
             <label for="project-name">Project Name:</label>
-            <input type="text" id="project-name" value="AI Meal Planner App" required>
+            <input type="text" id="project-name" value="" required>
 
             <label for="project-purpose">Project Purpose (The "Why"):</label>
             <textarea id="project-purpose" rows="3" required>To help busy professionals eat healthier by generating weekly meal plans based on their dietary needs and local grocery store sales.</textarea>
@@ -261,10 +334,29 @@
 
     </div>
 
+    <div id="chat-sidebar">
+            <h2><span id="agentStatus"></span></h2>
+            
+            <div id="voiceToggleContainer">
+                <img id="agentImage" src="png3.png" alt="Duck Assistant Status (Click to start)">
+                <p id="connectionStatus">Click the duck to start voice chat</p>
+            </div>
+            
+            <button id="stopButton">End Chat Session</button>
+            <div id="confirm-controls" style="display:none; margin-top:8px;">
+                <button id="confirmBtn" style="background:#10b981;color:white;padding:0.5rem 0.75rem;border:none;border-radius:6px;margin-right:8px;cursor:pointer;">Confirm</button>
+                <button id="retryBtn" style="background:#ef4444;color:white;padding:0.5rem 0.75rem;border:none;border-radius:6px;cursor:pointer;">Retry</button>
+            </div>
+            <div id="chat-messages"></div>
+        </div>
+    </div>
+
     <script>
         // --- 1. CORE APP LOGIC (Create and Redirect) ---
         
-        const API_BASE_URL = "http://127.0.0.1:5000";
+    const API_BASE_URL = "http://127.0.0.1:5000";
+    // Expose API base on window for modules loaded as type=module to access
+    window.API_BASE_URL = API_BASE_URL;
 
         document.addEventListener("DOMContentLoaded", () => {
             
@@ -385,5 +477,7 @@
             animate();
         }
     </script>
+    <!-- Load module that wires the voice/duck UI -->
+    <script type="module" src="./script.js"></script>
 </body>
 </html>

@@ -9,197 +9,10 @@ import json
 import os 
 import google.generativeai as genai 
 import re 
-import requests
-from typing import Optional, List, Dict, Any
+import traceback
 
-# ---- Jira REST Helpers ----
-class JiraRestClient:
-    def __init__(self, domain: str, email: str, api_token: str, timeout: int = 20):
-        if not domain.startswith("http"):
-            domain = f"https://{domain}"
-        self.base = domain.rstrip('/')
-        self.email = email
-        self.session = requests.Session()
-        self.session.auth = (email, api_token)
-        self.session.headers.update({"Accept": "application/json", "Content-Type": "application/json"})
-        self.timeout = timeout
-
-    def _url(self, path: str) -> str:
-        return f"{self.base}{path}" if path.startswith('/') else f"{self.base}/{path}"
-
-    def get_project(self, key: str):
-        r = self.session.get(self._url(f"/rest/api/3/project/{key}"), timeout=self.timeout)
-        if r.status_code == 404:
-            return None
-        r.raise_for_status()
-        return r.json()
-
-    def find_user_by_email(self, email_query: str):
-        params = {"query": email_query}
-        r = self.session.get(self._url("/rest/api/3/user/search"), params=params, timeout=self.timeout)
-        r.raise_for_status()
-        arr = r.json()
-        return arr[0] if arr else None
-
-    def create_project(self, *, key: str, name: str, project_type_key: str = "software", template_key: Optional[str] = None, lead_account_id: Optional[str] = None):
-        payload = {
-            "key": key,
-            "name": name,
-            "projectTypeKey": project_type_key,
-        }
-        if template_key:
-            payload["projectTemplateKey"] = template_key
-        if lead_account_id:
-            payload["leadAccountId"] = lead_account_id
-        r = self.session.post(self._url("/rest/api/3/project"), data=json.dumps(payload), timeout=self.timeout)
-        return r
-
-    def get_fields(self):
-        r = self.session.get(self._url("/rest/api/3/field"), timeout=self.timeout)
-        r.raise_for_status()
-        return r.json()
-
-    def create_issue(self, fields: dict):
-        r = self.session.post(self._url("/rest/api/3/issue"), data=json.dumps({"fields": fields}), timeout=self.timeout)
-        r.raise_for_status()
-        return r.json()
-
-def make_adf_paragraph(text: str) -> dict:
-    safe_text = (text or "").strip()
-    return {
-        "type": "doc",
-        "version": 1,
-        "content": [
-            {"type": "paragraph", "content": [{"type": "text", "text": safe_text[:10000]}]}
-        ]
-    }
-
-def find_field_id(fields: List[Dict[str, Any]], name: str) -> Optional[str]:
-    for f in fields:
-        if f.get("name") == name:
-            return f.get("id")
-    return None
-
-def export_plan_to_jira(*, client: JiraRestClient, council: dict, project_key: str, project_name: Optional[str] = None, create_project_if_missing: bool = False, template_key: Optional[str] = None, label: str = "AI-Plan"):
-    result = {
-        "project": {"key": project_key, "created": False},
-        "epics": [],
-        "issues": [],
-        "warnings": []
-    }
-
-    # 1) Ensure project exists (optionally create)
-    project_key = (project_key or "").upper()
-    result["project"]["key"] = project_key
-    proj = client.get_project(project_key)
-    if not proj and create_project_if_missing:
-        # Try to find lead by current auth email
-        lead_id = None
-        try:
-            lead_user = client.find_user_by_email(client.email)
-            if lead_user and lead_user.get("accountId"):
-                lead_id = lead_user["accountId"]
-        except Exception as e:
-            result["warnings"].append({"type": "lead_lookup_failed", "message": str(e)})
-
-        pn = project_name or project_key
-        template_candidates = [t for t in [
-            template_key,
-            "com.atlassian.jira-software-project-templates:software-simple-scrum",
-            "com.atlassian.jira-software-project-templates:software-simple-kanban",
-            "com.pyxis.greenhopper.jira:gh-simplified-scrum",
-            "com.pyxis.greenhopper.jira:gh-simplified-kanban"
-        ] if t]
-
-        creation_errors = []
-        for tmpl in template_candidates:
-            resp = client.create_project(key=project_key, name=pn, project_type_key="software", template_key=tmpl, lead_account_id=lead_id)
-            if resp.status_code < 400:
-                result["project"]["created"] = True
-                proj = resp.json()
-                break
-            else:
-                try:
-                    err = resp.json()
-                except Exception:
-                    err = {"message": resp.text}
-                creation_errors.append({"template": tmpl, "error": err})
-        if not proj:
-            result["warnings"].append({"type": "project_create_failed", "message": "All template attempts failed.", "errors": creation_errors})
-
-    if not proj:
-        result["warnings"].append({"type": "project_missing", "message": f"Project {project_key} not found and not created."})
-        return result
-
-    # 2) Fetch fields for Epic Name and Epic Link mapping
-    try:
-        fields = client.get_fields()
-    except Exception as e:
-        fields = []
-        result["warnings"].append({"type": "fields_fetch_failed", "message": str(e)})
-
-    epic_name_field_id = find_field_id(fields, "Epic Name")
-    epic_link_field_id = find_field_id(fields, "Epic Link")
-
-    # 3) Build epics from WBS phases
-    epics_map = {}  # short_name/id -> epicKey
-    for w in council.get("wbs", []) or []:
-        epic_summary = w.get("task") or w.get("short_name") or "Epic"
-        epic_fields = {
-            "project": {"key": project_key},
-            "issuetype": {"name": "Epic"},
-            "summary": epic_summary[:255]
-        }
-        # Epic Name custom field requirement on company-managed
-        if epic_name_field_id:
-            epic_fields[epic_name_field_id] = (w.get("short_name") or epic_summary)[:254]
-        try:
-            epic_issue = client.create_issue(epic_fields)
-            epic_key = epic_issue.get("key")
-            if epic_key:
-                epics_map[w.get("short_name") or w.get("id") or epic_summary] = epic_key
-                result["epics"].append({"wbs": w, "key": epic_key})
-        except Exception as e:
-            result["warnings"].append({"type": "epic_create_failed", "epic": epic_summary, "error": str(e)})
-
-    # 4) Create issues from functional requirements, link to epics heuristically by prefix matching short_name in requirement text
-    for req in council.get("requirements", []) or []:
-        req_id = req.get("id") or "REQ"
-        summary = (req.get("requirement") or req.get("summary") or req_id)[:255]
-        desc_text = req.get("criteria") or req.get("requirement") or "Generated by AI Project Planner"
-        fields_payload = {
-            "project": {"key": project_key},
-            "issuetype": {"name": "Story"},
-            "summary": summary,
-            "description": make_adf_paragraph(desc_text)
-        }
-        # Try to associate to an Epic if possible
-        linked = False
-        if epics_map:
-            # Naive mapping: if requirement mentions a WBS short_name/id, link to that epic
-            target = None
-            text = f"{summary} {desc_text}"
-            for k in epics_map.keys():
-                if k and str(k) in text:
-                    target = epics_map[k]
-                    break
-            if not target:
-                # fallback: first epic
-                target = next(iter(epics_map.values()))
-            if target:
-                if epic_link_field_id:
-                    fields_payload[epic_link_field_id] = target
-                else:
-                    # Team-managed projects often use 'parent' to link Story to Epic
-                    fields_payload["parent"] = {"key": target}
-                linked = True
-        try:
-            created = client.create_issue(fields_payload)
-            result["issues"].append({"requirement": req, "key": created.get("key"), "linkedToEpic": linked})
-        except Exception as e:
-            result["warnings"].append({"type": "issue_create_failed", "requirement": summary, "error": str(e)})
-
-    return result
+# Quick debug: print whether the GEMINI_API_KEY is visible to this process (DO NOT print the key itself)
+print(f"[startup-debug] GEMINI_API_KEY present in environment: {bool(os.environ.get('GEMINI_API_KEY'))}")
 
 # --- Flask App Setup ---
 app = flask.Flask(__name__)
@@ -445,18 +258,10 @@ def init_db():
             current_task TEXT,
             form_data TEXT,
             final_report TEXT,
-            council_json TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         ''')
         db.commit()
-        # Attempt to add missing columns for backward compatibility
-        try:
-            cursor.execute("ALTER TABLE jobs ADD COLUMN council_json TEXT")
-            db.commit()
-        except Exception:
-            # Column likely already exists
-            pass
 
 # --- Gemini API Setup ---
 try:
@@ -481,6 +286,9 @@ except (KeyError, ValueError) as e:
     print(f"Error initializing Gemini: {e}")
     print("Please set your GEMINI_API_KEY environment variable.")
     model = None
+
+# --- Runtime: model cooldown state to avoid repeated rate-limit retries ---
+MODEL_COOLDOWN_UNTIL = 0.0
 
 # --- JSON Parsing Helper ---
 def clean_json_response(text):
@@ -1006,8 +814,9 @@ def run_ai_council_job(job_id, form_data_json):
         db = get_db()
         cursor = db.cursor()
         cursor.execute(
-            "UPDATE jobs SET status = ?, final_report = ?, council_json = ? WHERE job_id = ?",
-            ('complete', json.dumps(final_report_object), json.dumps(council_results), job_id)
+            "UPDATE jobs SET status = ?, final_report = ? WHERE job_id = ?",
+             # 2. NEW: Save the JSON object as a string
+            ('complete', json.dumps(final_report_object), job_id) 
         )
         db.commit()
         print(f"--- Job {job_id} complete. Final report saved. ---")
@@ -1079,71 +888,182 @@ def get_project_status(job_id):
         "current_task": job["current_task"]
     })
 
-# --- API Endpoint 3: Export to Jira ---
-@app.route("/api/v1/export-to-jira", methods=["POST"])
-def export_to_jira_endpoint():
+
+@app.route('/api/v1/validate-provisional', methods=['POST', 'OPTIONS'])
+def validate_provisional():
+    """Validate provisional form data using the configured Gemini model.
+
+    Expects JSON: { provisional: { fieldId: value, ... }, field: "project-name" }
+    Returns JSON: { ok: bool, follow_up: str|null, value: str }
     """
-    Request JSON shape:
-    {
-      "job_id": "...", 
-      "jira": {"domain": "your.atlassian.net", "email": "you@x.com", "api_token": "..."},
-      "project": {"key": "AIML", "name": "AI Meal Planner", "createIfMissing": true, "templateKey": "com.pyxis.greenhopper.jira:gh-simplified-scrum"},
-      "options": {"label": "AI-Plan"}
-    }
-    """
-    data = request.json or {}
-    job_id = data.get("job_id")
-    jira_info = data.get("jira") or {}
-    proj = data.get("project") or {}
-    options = data.get("options") or {}
+    # Respond to preflight OPTIONS requests immediately to avoid 405 errors
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
 
-    if not job_id:
-        return jsonify({"error": "job_id is required"}), 400
-    for k in ("domain", "email", "api_token"):
-        if not jira_info.get(k):
-            return jsonify({"error": f"jira.{k} is required"}), 400
-    if not proj.get("key"):
-        return jsonify({"error": "project.key is required"}), 400
+    # Read request body early so we can optionally apply a permissive fallback
+    body = request.json or {}
+    provisional = body.get('provisional', {})
+    field = body.get('field')
 
-    # Load council JSON from DB
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute("SELECT council_json, form_data FROM jobs WHERE job_id = ?", (job_id,))
-    row = cursor.fetchone()
-    if not row:
-        return jsonify({"error": "Job not found"}), 404
+    # If we've recently hit a rate limit, short-circuit and tell clients to wait
+    global MODEL_COOLDOWN_UNTIL
+    now = time.time()
+    if MODEL_COOLDOWN_UNTIL and MODEL_COOLDOWN_UNTIL > now:
+        remaining = int(MODEL_COOLDOWN_UNTIL - now)
+        print(f"[validate_provisional] Currently rate-limited. Retry after {remaining}s")
+        return jsonify({"ok": False, "follow_up": f"Validation service rate-limited. Please try again in {remaining} seconds.", "value": None}), 429
+
+    print(f"[validate_provisional] Received request for field='{field}' provisional={json.dumps(provisional)}")
+
+    # If the server LLM isn't configured, allow a permissive fallback for short text fields
+    # (e.g., project names) so the UX isn't blocked when GEMINI_API_KEY is missing.
+    if not model:
+        raw_val = provisional.get(field) if field else None
+        if field and isinstance(raw_val, str) and raw_val.strip() and len(raw_val.strip()) <= 80:
+            normalized = raw_val.strip()
+            print(f"[validate_provisional] Gemini not configured. Permissively accepting field '{field}': {normalized}")
+            return jsonify({"ok": True, "follow_up": None, "value": normalized}), 200
+        return jsonify({"ok": False, "follow_up": "Server LLM not configured.", "value": None}), 500
+
+    if not field:
+        return jsonify({"ok": False, "follow_up": "Missing target field.", "value": None}), 400
+
+    # Build a concise prompt asking the model to validate the provisional document for the target field.
+    # Include a couple of few-shot examples to encourage strict JSON output.
+    prompt = f"""
+You are a helpful assistant that validates user-provided form data before committing it to a form.
+You will receive a JSON object named 'provisional' containing partial field values the user provided so far.
+Your job: Evaluate the value for the target field '{field}' in the context of the whole provisional document.
+
+Return a JSON object only, with these keys:
+- ok: true or false (whether the value is acceptable to commit into the form input)
+- follow_up: null or a short follow-up question the assistant should ask the user when ok=false
+- value: the cleaned/normalized value to store (string) or null
+
+Rules:
+- If you can clean or normalize the value (shorten, fix punctuation, extract names) return it in 'value'.
+- If the value is missing, ambiguous, or insufficient, return ok:false and a helpful 'follow_up' question.
+- Keep the follow_up short and specific.
+
+EXAMPLES (respond ENTIRELY with the JSON object, nothing else):
+
+Example 1 (reject - needs follow up):
+{{"ok": false, "follow_up": "Please describe the primary goal of your project in one sentence.", "value": null}}
+
+Example 2 (accept - normalized):
+{{"ok": true, "follow_up": null, "value": "AI Meal Planner - reduce grocery costs by $40/month"}}
+
+Here is the provisional object:\n{provisional}\n
+Evaluate field: {field}
+Respond with only JSON.
+"""
+
     try:
-        council = json.loads(row["council_json"]) if row["council_json"] else None
-    except Exception:
-        council = None
-    if not council:
-        return jsonify({"error": "Council JSON not available for this job. Re-run or ensure the job completed successfully."}), 409
+        resp = model.generate_content(prompt)
+        text = getattr(resp, 'text', str(resp))
 
-    client = JiraRestClient(jira_info["domain"], jira_info["email"], jira_info["api_token"])
-    project_key = proj.get("key")
-    project_name = proj.get("name")
-    create_if_missing = bool(proj.get("createIfMissing"))
-    template_key = proj.get("templateKey")
-
-    try:
-        result = export_plan_to_jira(
-            client=client,
-            council=council,
-            project_key=project_key,
-            project_name=project_name,
-            create_project_if_missing=create_if_missing,
-            template_key=template_key,
-            label=options.get("label", "AI-Plan")
-        )
-        return jsonify({"ok": True, "result": result})
-    except requests.HTTPError as e:
+        # 1) Try the strict cleaner first (existing helper)
+        cleaned = None
         try:
-            err = e.response.json()
+            cleaned = clean_json_response(text)
         except Exception:
-            err = {"message": str(e)}
-        return jsonify({"ok": False, "error": err}), 502
+            # 2) Try a direct json.loads after stripping common fences
+            try:
+                candidate = re.sub(r'```json|```', '', text).strip()
+                cleaned = json.loads(candidate)
+            except Exception:
+                # 3) Try to heuristically extract the first JSON object substring
+                try:
+                    start = text.find('{')
+                    end = text.rfind('}')
+                    if start != -1 and end != -1 and end > start:
+                        candidate = text[start:end+1]
+                        cleaned = json.loads(candidate)
+                except Exception:
+                    cleaned = None
+
+        if not cleaned:
+            # Log raw model output for debugging and return a helpful follow-up to the client.
+            print("[validate_provisional] Could not parse model response for validation. Raw response:")
+            print(text)
+            # If the user already provided a short non-empty text value for this field,
+            # accept it as a permissive fallback to avoid blocking (useful for names/titles).
+            raw_val = provisional.get(field)
+            if isinstance(raw_val, str) and raw_val.strip() and len(raw_val.strip()) <= 80:
+                normalized = raw_val.strip()
+                print(f"[validate_provisional] Falling back to permissive accept for field '{field}': {normalized}")
+                return jsonify({"ok": True, "follow_up": None, "value": normalized}), 200
+
+            return jsonify({
+                "ok": False,
+                "follow_up": "Validation service couldn't interpret the assistant's reply. Please rephrase or provide a clearer response.",
+                "value": None
+            }), 200
+
+        # Ensure expected keys and return gracefully
+        ok = bool(cleaned.get('ok', False))
+        follow_up = cleaned.get('follow_up') if 'follow_up' in cleaned else None
+        value = cleaned.get('value') if 'value' in cleaned else None
+        print(f"[validate_provisional] Parsed model response -> ok={ok} follow_up={follow_up} value={value}")
+        return jsonify({"ok": ok, "follow_up": follow_up, "value": value})
+
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+        # If the model raised an error that looks like a quota/rate-limit, set a short cooldown
+        err_text = str(e).lower()
+        tb = traceback.format_exc()
+        print(f"Validation error: {e}")
+        print(tb)
+        if 'quota' in err_text or 'rate limit' in err_text or '429' in err_text:
+            # set a cooldown (use retry seconds if embedded in message, otherwise default 60s)
+            retry_seconds = 60
+            # try to extract retry seconds from message
+            m = re.search(r'retry in (\d+)\.?', err_text)
+            if m:
+                try:
+                    retry_seconds = int(m.group(1))
+                except Exception:
+                    pass
+            # Don't shorten an existing cooldown if one is already set; extend only as necessary
+            now = time.time()
+            new_until = now + retry_seconds
+            # MODEL_COOLDOWN_UNTIL is declared global at the top of this function
+            prev = MODEL_COOLDOWN_UNTIL
+            MODEL_COOLDOWN_UNTIL = max(prev, new_until)
+            effective = int(MODEL_COOLDOWN_UNTIL - now)
+            print(f"[validate_provisional] Entering/Extending cooldown: requested={retry_seconds}s prev_remaining={int(prev-now) if prev>now else 0}s effective={effective}s due to rate limit.")
+            return jsonify({"ok": False, "follow_up": f"Validation service rate-limited. Please try again in {retry_seconds} seconds.", "value": None}), 429
+
+        # Other errors: return a generic server validation failure
+        return jsonify({"ok": False, "follow_up": "Validation failed on server. Please try again later.", "value": None}), 500
+
+
+@app.route('/api/v1/cooldown-status', methods=['GET'])
+def cooldown_status():
+    """Return the current model cooldown status so clients can inspect remaining wait time."""
+    global MODEL_COOLDOWN_UNTIL
+    now = time.time()
+    remaining = int(MODEL_COOLDOWN_UNTIL - now) if MODEL_COOLDOWN_UNTIL and MODEL_COOLDOWN_UNTIL > now else 0
+    return jsonify({
+        "cooldown_until": MODEL_COOLDOWN_UNTIL,
+        "remaining_seconds": remaining
+    }), 200
+
+
+@app.route('/api/v1/model-status', methods=['GET'])
+def model_status():
+    """Return whether the server has a configured Gemini model (do NOT return the API key)."""
+    try:
+        configured = bool(model)
+        info = {}
+        if configured:
+            # Provide non-sensitive info about the configured model
+            info['model_name'] = getattr(model, 'model_name', 'unknown')
+        return jsonify({
+            'model_configured': configured,
+            'info': info
+        }), 200
+    except Exception as e:
+        return jsonify({'model_configured': False, 'error': str(e)}), 500
 
 # --- Run the Server ---
 if __name__ == "__main__":
@@ -1153,4 +1073,6 @@ if __name__ == "__main__":
     print("1. Open 'form.html' in your browser to create a new project.")
     print("2. 'form.html' will redirect you to 'report.html' to view the report.")
     print("---")
-    app.run(debug=True, port=5000)
+    # Disable the auto-reloader here to keep the process running under our runner.
+    # The Flask reloader spawns a child process and the parent exits, which can confuse tooling.
+    app.run(debug=True, port=5000, use_reloader=False)
