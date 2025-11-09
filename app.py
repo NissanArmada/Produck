@@ -527,22 +527,16 @@ def agent_executive_summarizer(council_results):
     {summary_data}
     
     Return *only* a Markdown string for the summary.
-    
+    Limit your rsponse to 120 words.
+
     Example:
-    # Project Dashboard: [Project Name]
-    
     ### Key Statistics
     - **Total Budget:** [Total Estimate, e.g., "$500k - $615k"]
     - **Total Timeline:** [Total weeks, e.g., "35 Weeks"]
     - **Key Goal (Adoption):** [e.g., "15,000 Users in 6 Months"]
     - **Key Goal (Utility):** [e.g., "$40/mo Average User Savings"]
     - **Critical Path:** [e.g., "3.0 Core AI/ML Dev (8 Weeks)"]
-    
-    ### Actionable Insights
-    1.  **High-Impact Risk:** The project's success is critically dependent on [Most important risk...].
-    2.  **Budget Allocation:** The budget has been revised to allocate [$$$] (over X%) to [WBS Task...].
-    3.  **Go-to-Market:** The timeline for [WBS Task] has been extended to [X weeks] to support [SMART Goal...].
-    """
+        """
     response = model.generate_content(prompt)
     return response.text
 
