@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Start New Project - AI Planner</title>
+    
+    <!-- Use Inter font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- Produck.com Design System (Same as other page) --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121212; 
+            color: #e5e5e5;
+            line-height: 1.6;
+            padding: 2rem;
+            overflow-x: hidden;
+            background-image: linear-gradient(180deg, #181818 0%, #121212 100%);
+            min-height: 100vh;
+        }
+
+        /* --- 1. Background Effects (Grain, Grid, Orbs) --- */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 1;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+            opacity: 0.15;
+            mix-blend-mode: overlay;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.03;
+            background-image: 
+                linear-gradient(rgba(250, 204, 21, 0.24) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(250, 204, 21, 0.24) 1px, transparent 1px);
+            background-size: 100px 100px, 100px 100px;
+        }
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        .fixed-decor {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .orb-1 {
+            position: absolute;
+            top: -120px;
+            left: -120px;
+            width: 480px;
+            height: 480px;
+            border-radius: 100%;
+            opacity: 0.06;
+            filter: blur(72px);
+            background: radial-gradient(circle, rgba(250, 204, 21, 0.24) 0%, transparent 70%);
+            animation: float 25s ease-in-out infinite;
+        }
+        .mouse-glow {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+            transition: all 300ms ease-out;
+            background: radial-gradient(360px circle at 50% 50%, rgba(250, 204, 21, 0.048) 0%, transparent 70%);
+        }
+        .scanlines {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 60;
+            background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255, 255, 255, 0.03) 2px, rgba(255, 255, 255, 0.03) 4px);
+            opacity: 0.1;
+        }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(20px, -20px) rotate(2deg); }
+            50% { transform: translate(-10px, -30px) rotate(-2deg); }
+            75% { transform: translate(-20px, -10px) rotate(1deg); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- 3. Core UI Components --- */
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+        
+        .header { 
+            padding: 1.5rem 2rem; 
+            text-align: center;
+        }
+        .header h1 { 
+            font-size: 2rem;
+            font-weight: 900;
+            color: #facc15; /* Primary Yellow */
+            filter: drop-shadow(0 0 30px rgba(250, 204, 21, 0.36));
+            text-shadow: 0 0 20px rgba(250, 204, 21, 0.18), 0 0 40px rgba(250, 204, 21, 0.09);
+        }
+        .header p { 
+            font-size: 1rem; 
+            color: #d4d4d4; 
+        }
+
+        /* Form Styling */
+        #project-form { 
+            padding: 2rem; 
+            display: flex; 
+            flex-direction: column;
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.7) 0%, rgba(15, 15, 15, 0.6) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border-radius: 16px;
+        }
+        #project-form label { 
+            font-size: 0.875rem; 
+            font-weight: 600; 
+            margin-bottom: 0.5rem; 
+            color: #e5e5e5; 
+        }
+        #project-form input[type="text"],
+        #project-form textarea,
+        #project-form select { /* 6. Added select styling */
+            width: 100%; 
+            padding: 0.75rem 1rem; 
+            margin-bottom: 1rem; 
+            font-family: 'Inter', sans-serif; 
+            font-size: 1rem; 
+            background-color: rgba(10, 10, 10, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e5e5e5;
+            border-radius: 8px; 
+            transition: border-color 0.2s, box-shadow 0.2s; 
+            /* 6. Fix for select arrow in dark mode */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+            background-position: right 0.75rem center;
+            background-repeat: no-repeat;
+            background-size: 1.25em 1.25em;
+            padding-right: 2.5rem; /* Make room for arrow */
+        }
+        #project-form input[type="text"]:focus,
+        #project-form textarea:focus,
+        #project-form select:focus { 
+            outline: none; 
+            border-color: #facc15; 
+            box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.2); 
+        }
+        
+        /* Button Styling */
+        #project-form button { 
+            background-color: #facc15; 
+            color: #000000;
+            font-size: 1rem; 
+            font-weight: 700;
+            padding: 0.85rem; 
+            border: none; 
+            border-radius: 8px;
+            cursor: pointer; 
+            transition: all 0.2s ease-out;
+            box-shadow: 0 4px 15px rgba(250, 204, 21, 0.1);
+            margin-top: 1rem; /* 6. Added margin-top */
+        }
+        #project-form button:hover:not(:disabled) { 
+            background-color: #fde047;
+            box-shadow: 0 0 30px rgba(250, 204, 21, 0.36);
+            transform: scale(1.03);
+        }
+        #project-form button:disabled { 
+            cursor: not-allowed; 
+            opacity: 0.5;
+        }
+        
+        /* Error Message */
+        #error-message {
+            display: none; 
+            padding: 1rem; 
+            background-color: rgba(255, 75, 75, 0.1);
+            border: 1px solid rgba(255, 75, 75, 0.3);
+            border-radius: 8px; 
+            text-align: center; 
+            font-weight: 500; 
+            color: #ff6b6b;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- All decorative background elements -->
+    <div class="mouse-glow"></div>
+    <div class="scanlines"></div>
+    <div class="fixed-decor">
+        <canvas id="particle-canvas"></canvas>
+        <div class="orb-1"></div>
+    </div>
+    
+    <!-- Main App Container -->
+    <div class="container">
+        <div class="header">
+            <h1>AI Project Planner</h1>
+            <p>Enter your project details to generate a comprehensive plan of action.</p>
+        </div>
+
+        <form id="project-form">
+            <label for="project-name">Project Name:</label>
+            <input type="text" id="project-name" value="AI Meal Planner App" required>
+
+            <label for="project-purpose">Project Purpose (The "Why"):</label>
+            <textarea id="project-purpose" rows="3" required>To help busy professionals eat healthier by generating weekly meal plans based on their dietary needs and local grocery store sales.</textarea>
+
+            <label for="target-audience">Target Audience:</label>
+            <input type="text" id="target-audience" value="Busy professionals, families, fitness enthusiasts">
+
+            <label for="known-competitors">Known Competitors:</label>
+            <input type="text" id="known-competitors" value="eMeals, Paprika, Yummly">
+            
+            <!-- 6. NEW: Revision Rounds Selector -->
+            <label for="revision-rounds">QA Revision Rounds:</label>
+            <select id="revision-rounds">
+                <option value="1">1 Round (Fastest, No Revisions)</option>
+                <option value="2">2 Rounds (Balanced)</option>
+                <option value="until-good" selected>Until Good (Max 3 Rounds)</option>
+            </select>
+            
+            <button type="submit" id="submit-button">Generate Plan</button>
+        </form>
+
+        <div id="error-message"></div>
+
+    </div>
+
+    <script>
+        // --- 1. CORE APP LOGIC (Create and Redirect) ---
+        
+        const API_BASE_URL = "http://127.0.0.1:5000";
+
+        document.addEventListener("DOMContentLoaded", () => {
+            
+            const projectForm = document.getElementById("project-form");
+            const submitButton = document.getElementById("submit-button");
+            const errorMessage = document.getElementById("error-message");
+
+            projectForm.addEventListener("submit", async (event) => {
+                event.preventDefault(); 
+                
+                submitButton.disabled = true;
+                submitButton.innerText = "Submitting...";
+                errorMessage.style.display = "none";
+
+                // Gather form data
+                const formData = {
+                    name: document.getElementById("project-name").value,
+                    purpose: document.getElementById("project-purpose").value,
+                    audience: document.getElementById("target-audience").value,
+                    competitors: document.getElementById("known-competitors").value,
+                    // 6. NEW: Send revision setting to backend
+                    revision_rounds: document.getElementById("revision-rounds").value 
+                };
+
+                try {
+                    // START THE JOB
+                    const response = await fetch(`${API_BASE_URL}/api/v1/create-project`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(formData)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to start job. Server responded with ${response.status}`);
+                    }
+
+                    const { job_id } = await response.json();
+
+                    // --- REDIRECT TO THE REPORT PAGE ---
+                    window.location.href = `report.html?job_id=${job_id}`;
+
+                } catch (error) {
+                    handleError(error.message);
+                }
+            });
+
+            function handleError(message) {
+                errorMessage.style.display = "block";
+                errorMessage.innerText = `Error: ${message}. Is the Python server running?`;
+                submitButton.disabled = false;
+                submitButton.innerText = "Generate Plan";
+            }
+        });
+
+        // --- 2. "PRODUCK" DECORATIVE JAVASCRIPT ---
+        const mouseGlow = document.querySelector('.mouse-glow');
+        document.addEventListener('mousemove', (e) => {
+            requestAnimationFrame(() => {
+                if (!mouseGlow) return;
+                mouseGlow.style.background = `radial-gradient(
+                    360px circle at ${e.clientX}px ${e.clientY}px,
+                    rgba(250, 204, 21, 0.048) 0%,
+                    transparent 70%
+                )`;
+            });
+        });
+
+        const canvas = document.getElementById('particle-canvas');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            let particles = [];
+            let particleCount;
+
+            const setupCanvas = () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                particleCount = 30; 
+                particles = [];
+                for (let i = 0; i < particleCount; i++) {
+                    particles.push(new Particle());
+                }
+            };
+
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.radius = Math.random() * 1.2 + 0.3;
+                    this.opacity = Math.random() * 0.12 + 0.03;
+                    this.vx = Math.random() * 0.2 - 0.1;
+                    this.vy = Math.random() * 0.2 - 0.1;
+                }
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+                    ctx.fillStyle = `rgba(250, 204, 21, ${this.opacity})`;
+                    ctx.fill();
+                }
+                update(wave) {
+                    this.x += this.vx + Math.sin(wave.y / 30) * 0.1;
+                    this.y += this.vy + Math.cos(wave.x / 40) * 0.1;
+                    if (this.x < 0) this.x = canvas.width;
+                    if (this.x > canvas.width) this.x = 0;
+                    if (this.y < 0) this.y = canvas.height;
+                    if (this.y > canvas.height) this.y = 0;
+                    this.draw();
+                }
+            }
+            let wave = { x: 0, y: 0 };
+            const animate = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                wave.x += 0.01; wave.y += 0.015;
+                particles.forEach(p => p.update(wave));
+                requestAnimationFrame(animate);
+            };
+            window.addEventListener('resize', setupCanvas);
+            setupCanvas();
+            animate();
+        }
+    </script>
+</body>
+</html>
