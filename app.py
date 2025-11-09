@@ -9,6 +9,197 @@ import json
 import os 
 import google.generativeai as genai 
 import re 
+import requests
+from typing import Optional, List, Dict, Any
+
+# ---- Jira REST Helpers ----
+class JiraRestClient:
+    def __init__(self, domain: str, email: str, api_token: str, timeout: int = 20):
+        if not domain.startswith("http"):
+            domain = f"https://{domain}"
+        self.base = domain.rstrip('/')
+        self.email = email
+        self.session = requests.Session()
+        self.session.auth = (email, api_token)
+        self.session.headers.update({"Accept": "application/json", "Content-Type": "application/json"})
+        self.timeout = timeout
+
+    def _url(self, path: str) -> str:
+        return f"{self.base}{path}" if path.startswith('/') else f"{self.base}/{path}"
+
+    def get_project(self, key: str):
+        r = self.session.get(self._url(f"/rest/api/3/project/{key}"), timeout=self.timeout)
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        return r.json()
+
+    def find_user_by_email(self, email_query: str):
+        params = {"query": email_query}
+        r = self.session.get(self._url("/rest/api/3/user/search"), params=params, timeout=self.timeout)
+        r.raise_for_status()
+        arr = r.json()
+        return arr[0] if arr else None
+
+    def create_project(self, *, key: str, name: str, project_type_key: str = "software", template_key: Optional[str] = None, lead_account_id: Optional[str] = None):
+        payload = {
+            "key": key,
+            "name": name,
+            "projectTypeKey": project_type_key,
+        }
+        if template_key:
+            payload["projectTemplateKey"] = template_key
+        if lead_account_id:
+            payload["leadAccountId"] = lead_account_id
+        r = self.session.post(self._url("/rest/api/3/project"), data=json.dumps(payload), timeout=self.timeout)
+        return r
+
+    def get_fields(self):
+        r = self.session.get(self._url("/rest/api/3/field"), timeout=self.timeout)
+        r.raise_for_status()
+        return r.json()
+
+    def create_issue(self, fields: dict):
+        r = self.session.post(self._url("/rest/api/3/issue"), data=json.dumps({"fields": fields}), timeout=self.timeout)
+        r.raise_for_status()
+        return r.json()
+
+def make_adf_paragraph(text: str) -> dict:
+    safe_text = (text or "").strip()
+    return {
+        "type": "doc",
+        "version": 1,
+        "content": [
+            {"type": "paragraph", "content": [{"type": "text", "text": safe_text[:10000]}]}
+        ]
+    }
+
+def find_field_id(fields: List[Dict[str, Any]], name: str) -> Optional[str]:
+    for f in fields:
+        if f.get("name") == name:
+            return f.get("id")
+    return None
+
+def export_plan_to_jira(*, client: JiraRestClient, council: dict, project_key: str, project_name: Optional[str] = None, create_project_if_missing: bool = False, template_key: Optional[str] = None, label: str = "AI-Plan"):
+    result = {
+        "project": {"key": project_key, "created": False},
+        "epics": [],
+        "issues": [],
+        "warnings": []
+    }
+
+    # 1) Ensure project exists (optionally create)
+    project_key = (project_key or "").upper()
+    result["project"]["key"] = project_key
+    proj = client.get_project(project_key)
+    if not proj and create_project_if_missing:
+        # Try to find lead by current auth email
+        lead_id = None
+        try:
+            lead_user = client.find_user_by_email(client.email)
+            if lead_user and lead_user.get("accountId"):
+                lead_id = lead_user["accountId"]
+        except Exception as e:
+            result["warnings"].append({"type": "lead_lookup_failed", "message": str(e)})
+
+        pn = project_name or project_key
+        template_candidates = [t for t in [
+            template_key,
+            "com.atlassian.jira-software-project-templates:software-simple-scrum",
+            "com.atlassian.jira-software-project-templates:software-simple-kanban",
+            "com.pyxis.greenhopper.jira:gh-simplified-scrum",
+            "com.pyxis.greenhopper.jira:gh-simplified-kanban"
+        ] if t]
+
+        creation_errors = []
+        for tmpl in template_candidates:
+            resp = client.create_project(key=project_key, name=pn, project_type_key="software", template_key=tmpl, lead_account_id=lead_id)
+            if resp.status_code < 400:
+                result["project"]["created"] = True
+                proj = resp.json()
+                break
+            else:
+                try:
+                    err = resp.json()
+                except Exception:
+                    err = {"message": resp.text}
+                creation_errors.append({"template": tmpl, "error": err})
+        if not proj:
+            result["warnings"].append({"type": "project_create_failed", "message": "All template attempts failed.", "errors": creation_errors})
+
+    if not proj:
+        result["warnings"].append({"type": "project_missing", "message": f"Project {project_key} not found and not created."})
+        return result
+
+    # 2) Fetch fields for Epic Name and Epic Link mapping
+    try:
+        fields = client.get_fields()
+    except Exception as e:
+        fields = []
+        result["warnings"].append({"type": "fields_fetch_failed", "message": str(e)})
+
+    epic_name_field_id = find_field_id(fields, "Epic Name")
+    epic_link_field_id = find_field_id(fields, "Epic Link")
+
+    # 3) Build epics from WBS phases
+    epics_map = {}  # short_name/id -> epicKey
+    for w in council.get("wbs", []) or []:
+        epic_summary = w.get("task") or w.get("short_name") or "Epic"
+        epic_fields = {
+            "project": {"key": project_key},
+            "issuetype": {"name": "Epic"},
+            "summary": epic_summary[:255]
+        }
+        # Epic Name custom field requirement on company-managed
+        if epic_name_field_id:
+            epic_fields[epic_name_field_id] = (w.get("short_name") or epic_summary)[:254]
+        try:
+            epic_issue = client.create_issue(epic_fields)
+            epic_key = epic_issue.get("key")
+            if epic_key:
+                epics_map[w.get("short_name") or w.get("id") or epic_summary] = epic_key
+                result["epics"].append({"wbs": w, "key": epic_key})
+        except Exception as e:
+            result["warnings"].append({"type": "epic_create_failed", "epic": epic_summary, "error": str(e)})
+
+    # 4) Create issues from functional requirements, link to epics heuristically by prefix matching short_name in requirement text
+    for req in council.get("requirements", []) or []:
+        req_id = req.get("id") or "REQ"
+        summary = (req.get("requirement") or req.get("summary") or req_id)[:255]
+        desc_text = req.get("criteria") or req.get("requirement") or "Generated by AI Project Planner"
+        fields_payload = {
+            "project": {"key": project_key},
+            "issuetype": {"name": "Story"},
+            "summary": summary,
+            "description": make_adf_paragraph(desc_text)
+        }
+        # Try to associate to an Epic if possible
+        linked = False
+        if epics_map:
+            # Naive mapping: if requirement mentions a WBS short_name/id, link to that epic
+            target = None
+            text = f"{summary} {desc_text}"
+            for k in epics_map.keys():
+                if k and str(k) in text:
+                    target = epics_map[k]
+                    break
+            if not target:
+                # fallback: first epic
+                target = next(iter(epics_map.values()))
+            if target:
+                if epic_link_field_id:
+                    fields_payload[epic_link_field_id] = target
+                else:
+                    # Team-managed projects often use 'parent' to link Story to Epic
+                    fields_payload["parent"] = {"key": target}
+                linked = True
+        try:
+            created = client.create_issue(fields_payload)
+            result["issues"].append({"requirement": req, "key": created.get("key"), "linkedToEpic": linked})
+        except Exception as e:
+            result["warnings"].append({"type": "issue_create_failed", "requirement": summary, "error": str(e)})
+
+    return result
 
 # --- Flask App Setup ---
 app = flask.Flask(__name__)
@@ -254,10 +445,18 @@ def init_db():
             current_task TEXT,
             form_data TEXT,
             final_report TEXT,
+            council_json TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         ''')
         db.commit()
+        # Attempt to add missing columns for backward compatibility
+        try:
+            cursor.execute("ALTER TABLE jobs ADD COLUMN council_json TEXT")
+            db.commit()
+        except Exception:
+            # Column likely already exists
+            pass
 
 # --- Gemini API Setup ---
 try:
@@ -807,9 +1006,8 @@ def run_ai_council_job(job_id, form_data_json):
         db = get_db()
         cursor = db.cursor()
         cursor.execute(
-            "UPDATE jobs SET status = ?, final_report = ? WHERE job_id = ?",
-             # 2. NEW: Save the JSON object as a string
-            ('complete', json.dumps(final_report_object), job_id) 
+            "UPDATE jobs SET status = ?, final_report = ?, council_json = ? WHERE job_id = ?",
+            ('complete', json.dumps(final_report_object), json.dumps(council_results), job_id)
         )
         db.commit()
         print(f"--- Job {job_id} complete. Final report saved. ---")
@@ -880,6 +1078,72 @@ def get_project_status(job_id):
         "status": job["status"],
         "current_task": job["current_task"]
     })
+
+# --- API Endpoint 3: Export to Jira ---
+@app.route("/api/v1/export-to-jira", methods=["POST"])
+def export_to_jira_endpoint():
+    """
+    Request JSON shape:
+    {
+      "job_id": "...", 
+      "jira": {"domain": "your.atlassian.net", "email": "you@x.com", "api_token": "..."},
+      "project": {"key": "AIML", "name": "AI Meal Planner", "createIfMissing": true, "templateKey": "com.pyxis.greenhopper.jira:gh-simplified-scrum"},
+      "options": {"label": "AI-Plan"}
+    }
+    """
+    data = request.json or {}
+    job_id = data.get("job_id")
+    jira_info = data.get("jira") or {}
+    proj = data.get("project") or {}
+    options = data.get("options") or {}
+
+    if not job_id:
+        return jsonify({"error": "job_id is required"}), 400
+    for k in ("domain", "email", "api_token"):
+        if not jira_info.get(k):
+            return jsonify({"error": f"jira.{k} is required"}), 400
+    if not proj.get("key"):
+        return jsonify({"error": "project.key is required"}), 400
+
+    # Load council JSON from DB
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("SELECT council_json, form_data FROM jobs WHERE job_id = ?", (job_id,))
+    row = cursor.fetchone()
+    if not row:
+        return jsonify({"error": "Job not found"}), 404
+    try:
+        council = json.loads(row["council_json"]) if row["council_json"] else None
+    except Exception:
+        council = None
+    if not council:
+        return jsonify({"error": "Council JSON not available for this job. Re-run or ensure the job completed successfully."}), 409
+
+    client = JiraRestClient(jira_info["domain"], jira_info["email"], jira_info["api_token"])
+    project_key = proj.get("key")
+    project_name = proj.get("name")
+    create_if_missing = bool(proj.get("createIfMissing"))
+    template_key = proj.get("templateKey")
+
+    try:
+        result = export_plan_to_jira(
+            client=client,
+            council=council,
+            project_key=project_key,
+            project_name=project_name,
+            create_project_if_missing=create_if_missing,
+            template_key=template_key,
+            label=options.get("label", "AI-Plan")
+        )
+        return jsonify({"ok": True, "result": result})
+    except requests.HTTPError as e:
+        try:
+            err = e.response.json()
+        except Exception:
+            err = {"message": str(e)}
+        return jsonify({"ok": False, "error": err}), 502
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 # --- Run the Server ---
 if __name__ == "__main__":

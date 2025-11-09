@@ -389,6 +389,49 @@
             color: #ff6b6b;
             margin-bottom: 1rem;
         }
+
+        /* --- Export to Jira Panel --- */
+        #jira-export-panel {
+            display: none; /* shown after report complete */
+            margin-top: 1rem;
+        }
+        #jira-export-panel .form-row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        #jira-export-panel label {
+            font-size: 0.85rem;
+            color: #d4d4d4;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+        #jira-export-panel input, #jira-export-panel select {
+            width: 100%;
+            padding: 0.6rem 0.8rem;
+            font-family: 'Inter', sans-serif; 
+            font-size: 0.95rem; 
+            background-color: rgba(10, 10, 10, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e5e5e5;
+            border-radius: 8px; 
+        }
+        #jira-export-panel .half { flex: 1 1 48%; min-width: 250px; }
+        #jira-export-btn {
+            background-color: #facc15; 
+            color: #000000;
+            font-size: 1rem; 
+            font-weight: 700;
+            padding: 0.75rem 1.5rem; 
+            border: none; 
+            border-radius: 8px;
+            cursor: pointer; 
+            transition: all 0.2s ease-out;
+            box-shadow: 0 4px 15px rgba(250, 204, 21, 0.1);
+            margin-top: 0.5rem;
+        }
+        #jira-export-btn:hover { background-color: #fde047; box-shadow: 0 0 30px rgba(250, 204, 21, 0.36); transform: scale(1.03); }
+        #jira-export-status { margin-top: 0.75rem; white-space: pre-wrap; font-size: 0.9rem; color: #d4d4d4; }
     </style>
 </head>
 <body>
@@ -433,6 +476,49 @@
             <!-- 2. NEW: Full Report View (hidden by default) -->
             <div id="full-report-view" class="glass-panel">
                 <!-- The full report will be injected here -->
+            </div>
+
+            <!-- NEW: Export to Jira Panel -->
+            <div id="jira-export-panel" class="glass-panel">
+                <h2>Export to Jira</h2>
+                <p style="margin-bottom: 1rem; color:#cfcfcf">Create a Jira project (optional), epics from WBS, and stories from functional requirements.</p>
+                <div class="form-row">
+                    <div class="half">
+                        <label for="jira-domain">Jira Domain (e.g., your.atlassian.net)</label>
+                        <input type="text" id="jira-domain" placeholder="your.atlassian.net">
+                    </div>
+                    <div class="half">
+                        <label for="jira-email">Email</label>
+                        <input type="text" id="jira-email" placeholder="you@example.com">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="half">
+                        <label for="jira-token">API Token</label>
+                        <input type="password" id="jira-token" placeholder="Jira API token">
+                    </div>
+                    <div class="half">
+                        <label for="jira-template">Template Key</label>
+                        <input type="text" id="jira-template" value="com.atlassian.jira-software-project-templates:software-simple-scrum">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="half">
+                        <label for="jira-project-key">Project Key (A–Z, 2–10 chars)</label>
+                        <input type="text" id="jira-project-key" placeholder="AIML">
+                    </div>
+                    <div class="half">
+                        <label for="jira-project-name">Project Name</label>
+                        <input type="text" id="jira-project-name" placeholder="AI Meal Planner">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="half">
+                        <label><input type="checkbox" id="jira-create-project" checked> Create project if missing</label>
+                    </div>
+                </div>
+                <button id="jira-export-btn">Export to Jira</button>
+                <div id="jira-export-status"></div>
             </div>
         </div>
     </div>
@@ -508,6 +594,9 @@
                             // 5. Show the dashboard and toggle button
                             dashboardView.style.display = "flex";
                             toggleBtnContainer.style.display = "block";
+
+                            // 6. Show export panel
+                            document.getElementById('jira-export-panel').style.display = 'block';
                             break;
                         
                         case "failed":
@@ -577,6 +666,75 @@
                     dashboardView.style.display = "none";
                     fullReportView.style.display = "block";
                     toggleBtn.innerText = "Show Dashboard";
+                }
+            });
+
+            // --- Export to Jira Handler ---
+            document.getElementById('jira-export-btn').addEventListener('click', async () => {
+                const statusEl = document.getElementById('jira-export-status');
+                statusEl.style.color = '#d4d4d4';
+                statusEl.innerText = 'Exporting...';
+
+                const domain = (document.getElementById('jira-domain').value || '').trim();
+                const email = (document.getElementById('jira-email').value || '').trim();
+                const token = (document.getElementById('jira-token').value || '').trim();
+                const key = (document.getElementById('jira-project-key').value || '').trim();
+                const name = (document.getElementById('jira-project-name').value || '').trim();
+                const templateKey = (document.getElementById('jira-template').value || '').trim();
+                const createIfMissing = document.getElementById('jira-create-project').checked;
+
+                if (!domain || !email || !token || !key) {
+                    statusEl.style.color = '#ff6b6b';
+                    statusEl.innerText = 'Please fill domain, email, API token, and project key.';
+                    return;
+                }
+
+                try {
+                    const payload = {
+                        job_id: job_id,
+                        jira: { domain, email, api_token: token },
+                        project: { key, name, createIfMissing, templateKey },
+                        options: { label: 'AI-Plan' }
+                    };
+                    const resp = await fetch(`${API_BASE_URL}/api/v1/export-to-jira`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await resp.json();
+                    if (!resp.ok || data.ok === false) {
+                        const errMsg = (data && data.error) ? JSON.stringify(data.error, null, 2) : `HTTP ${resp.status}`;
+                        throw new Error(errMsg);
+                    }
+                    // Render results
+                    const res = data.result;
+                    const createdEpics = (res.epics || []).map(e => e.key).filter(Boolean);
+                    const createdIssues = (res.issues || []).map(i => i.key).filter(Boolean);
+                    const warnings = res.warnings || [];
+
+                    let msg = '';
+                    msg += `Project: ${res.project.key} (created: ${res.project.created})\n`;
+                    if (createdEpics.length) msg += `Epics (${createdEpics.length}): ${createdEpics.join(', ')}\n`;
+                    if (createdIssues.length) msg += `Issues (${createdIssues.length}): ${createdIssues.join(', ')}\n`;
+                    if (warnings.length) {
+                        msg += `Warnings (${warnings.length}):\n`;
+                        warnings.forEach(w => {
+                            const line = `- ${w.type || 'warning'}: ${w.message || ''}`.trim();
+                            msg += line + '\n';
+                            if (w.error) {
+                                try { msg += '  error: ' + JSON.stringify(w.error, null, 2) + '\n'; } catch {}
+                            }
+                            if (w.errors) {
+                                try { msg += '  errors: ' + JSON.stringify(w.errors, null, 2) + '\n'; } catch {}
+                            }
+                        });
+                    }
+
+                    statusEl.style.color = '#a8ffbf';
+                    statusEl.innerText = msg || 'Export completed.';
+                } catch (e) {
+                    statusEl.style.color = '#ff6b6b';
+                    statusEl.innerText = `Export failed: ${e.message}`;
                 }
             });
 

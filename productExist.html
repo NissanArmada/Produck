@@ -5,12 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Import from Jira - Produck</title>
     
-    <!-- Load Google Font 'Inter' -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
 
-    <!-- Styles from productNew.html, with additions for results list -->
     <style>
         /* --- Produck.com Design System (Same as other page) --- */
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -286,304 +284,26 @@
             100% { transform: rotate(360deg); }
         }
 
-        #project-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            max-height: 400px;
-            overflow-y: auto;
-            /* Glassmorphism for the list */
-            background: linear-gradient(135deg, rgba(20, 20, 20, 0.7) 0%, rgba(15, 15, 15, 0.6) 100%);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            border-radius: 16px;
-            padding: 1rem;
-        }
-        
-        #project-list li {
-            background-color: rgba(10, 10, 10, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 1rem 1.25rem;
-            border-radius: 8px;
-            margin-bottom: 0.75rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        #project-list li:last-child {
-            margin-bottom: 0;
-        }
-
-        #project-list li:hover {
-            background-color: rgba(250, 204, 21, 0.1);
-            border-color: #facc15;
-            transform: translateY(-2px);
-        }
-        /* Active list item */
-        #project-list li.active {
-             background-color: rgba(250, 204, 21, 0.1);
-            border-color: #facc15;
-        }
-
-
-        /* Details panel */
-        #project-details {
-            margin-top: 2rem;
-            display: none;
-            animation: fadeIn 0.5s ease-out;
-            background: linear-gradient(135deg, rgba(25,25,25,0.72) 0%, rgba(15,15,15,0.62) 100%);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.45);
-            border-radius: 16px;
-            padding: 1.5rem 1.75rem 2rem;
-        }
-        
-        .detail-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 1rem;
-            gap: 1rem;
-        }
-        
-        .detail-header h3 {
-            margin: 0;
-            font-size: 1.4rem;
-            font-weight: 800;
-            color: #facc15;
-            text-shadow: 0 0 16px rgba(250,204,21,0.24);
-        }
-        
-        /* Edit/Save/Cancel buttons */
-        .btn-secondary {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: #e5e5e5;
-            font-size: 0.8rem;
-            font-weight: 600;
-            padding: 0.4rem 0.8rem;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease-out;
-        }
-        .btn-secondary:hover:not(:disabled) {
-            background-color: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.3);
-        }
-        
-        #save-project-button {
-             background-color: #facc15; 
-            color: #000000;
-            font-size: 0.8rem;
-            font-weight: 700;
-            padding: 0.4rem 0.8rem;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease-out;
-        }
-        #save-project-button:hover:not(:disabled) {
-            background-color: #fde047;
-        }
-         #save-project-button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-         }
-        
-        .detail-button-group {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 1.5rem;
-        }
-
-        .detail-meta { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; }
-        .detail-chip {
-            background: rgba(250,204,21,0.1);
-            border: 1px solid rgba(250,204,21,0.3);
-            color: #facc15;
-            padding: .4rem .7rem;
-            font-size: .75rem;
-            border-radius: 20px;
-            letter-spacing: .5px;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: .35rem;
-        }
-        .detail-section { margin-bottom: 1.5rem; }
-        .detail-section h4 { font-size: .9rem; text-transform: uppercase; letter-spacing: 1px; font-weight:700; margin:0 0 .5rem; color:#d4d4d4; }
-        .detail-list { list-style:none; margin:0; padding:0; max-height:180px; overflow-y:auto; }
-        .detail-list li { padding:.5rem .6rem; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.3); border-radius:8px; margin-bottom:.4rem; font-size:.8rem; }
-        .detail-empty { font-style:italic; opacity:.7; }
-        
-        /* Read-only detail text */
-        .detail-text {
-            line-height: 1.7;
-            color: #d4d4d4;
-            white-space: pre-wrap; /* Preserve line breaks */
-            word-wrap: break-word;
-        }
-        .detail-text.description {
-            background: rgba(10, 10, 10, 0.3);
-            border-left: 3px solid #facc15;
-            padding: 1rem;
-            border-radius: 4px;
-            font-style: italic;
-            color: #e5e5e5;
-        }
-        
-        /* Editable form fields */
-        .detail-input, .detail-textarea {
-            width: 100%; 
-            padding: 0.75rem 1rem; 
-            margin-bottom: 0.5rem; 
-            font-family: 'Inter', sans-serif; 
-            font-size: 0.9rem; 
-            background-color: rgba(10, 10, 10, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #e5e5e5;
-            border-radius: 8px; 
-            transition: border-color 0.2s, box-shadow 0.2s; 
-        }
-        .detail-input:focus, .detail-textarea:focus {
-            outline: none; 
-            border-color: #facc15; 
-            box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.2); 
-        }
-        .detail-textarea {
-            min-height: 120px;
-            resize: vertical;
-        }
-        
-        /* --- Styles for Task (Issue) List --- */
-        #issues-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            display: grid;
-            gap: 0.6rem;
-        }
-        #issues-list li {
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        /* Output area styling */
+        pre.code-output {
+            margin-top: 1rem;
             background: rgba(0, 0, 0, 0.35);
-            border-radius: 10px;
-            padding: 0.75rem 0.9rem;
-        }
-        .issue-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 0.6rem;
-        }
-        .issue-header .name {
-            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 1rem;
             color: #e5e5e5;
-        }
-        .issue-header .name span {
-            opacity: 0.8;
-            font-weight: 600;
-        }
-        .issue-header .controls {
-            display: flex;
-            gap: 0.4rem;
-            align-items: center;
-        }
-        .issue-meta {
-            margin-top: 0.5rem;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.35rem;
-        }
-        .issue-edit-area {
-            display: none;
-            margin-top: 0.75rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            padding-top: 0.75rem;
-        }
-        .issue-edit-area label {
-            font-size: 0.8rem;
-            color: #d4d4d4;
-            margin-bottom: 0.25rem;
-            display: block;
-        }
-        .issue-edit-area input,
-        .issue-edit-area textarea,
-        .issue-edit-area select {
-            width: 100%;
-            padding: 0.55rem 0.7rem;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            background: rgba(0, 0, 0, 0.4);
-            color: #e5e5e5;
-            font-family: 'Inter', sans-serif;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
             font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-        }
-        .issue-edit-area textarea {
-            min-height: 80px;
-            resize: vertical;
-        }
-        .issue-edit-area select {
-             -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
-            background-position: right 0.5rem center;
-            background-repeat: no-repeat;
-            background-size: 1.25em 1.25em;
-            padding-right: 2rem;
-        }
-        .issue-controls-row {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .issue-status-line {
-            font-size: 0.8rem;
-            color: #a3a3a3;
-            flex-basis: 100%;
-            margin-top: 0.25rem;
-        }
-
-        /* Generic small button */
-        .btn-small {
-            background: #facc15;
-            color: #000;
-            border: none;
-            border-radius: 6px;
-            padding: 0.35rem 0.6rem;
-            font-weight: 700;
-            cursor: pointer;
-            font-size: 0.8rem;
-            transition: all 0.2s ease;
-        }
-        .btn-small:hover { background: #fde047; }
-        .btn-small-secondary {
-            background: transparent;
-            color: #d4d4d4;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 0.35rem 0.6rem;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: all 0.2s ease;
-        }
-        .btn-small-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
+            max-height: 480px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
         
     </style>
 </head>
 <body>
 
-    <!-- Background effects -->
     <canvas id="particle-canvas"></canvas>
     <div class="mouse-glow"></div>
     <div class="scanlines"></div>
@@ -591,34 +311,27 @@
         <div class="orb-1"></div>
     </div>
 
-    <!-- Main Content Wrapper -->
     <div class="container">
         
-        <!-- Back Button -->
         <a href="productDashboard.html" class="back-link">&larr; Back to Dashboard</a>
         
-        <!-- Header -->
         <div class="header">
             <h1>Import from Jira</h1>
             <p>Enter your Jira details to fetch projects.</p>
         </div>
 
-        <!-- Jira Auth Form -->
         <form id="jira-auth-form" action="#" method="POST">
             
-            <!-- Jira Domain -->
             <div>
                 <label for="jira-domain">Jira Domain</label>
                 <input type="text" name="jira-domain" id="jira-domain" placeholder="your-company.atlassian.net" required>
             </div>
     
-            <!-- Email -->
             <div>
                 <label for="jira-email">Your Email</label>
                 <input type="email" name="jira-email" id="jira-email" placeholder="you@your-company.com" required>
             </div>
     
-            <!-- API Token -->
             <div>
                 <label for="jira-token">Jira API Token</label>
                 <input type="password" name="jira-token" id="jira-token" placeholder="Your Jira API Token" required>
@@ -627,44 +340,24 @@
                 </small>
             </div>
 
-            <!-- Use Proxy Toggle -->
-            <div style="display:flex; align-items:center; gap:.5rem; margin:.25rem 0 1rem .25rem;">
-                <input type="checkbox" id="use-proxy" style="width:16px; height:16px;" checked />
-                <label for="use-proxy" style="margin:0; color:#d4d4d4; cursor:pointer;">Use local proxy (http://localhost:3000)</label>
-            </div>
-    
-            <!-- Submit Button -->
             <div>
                 <button type="submit" id="fetch-button" class="btn-primary">
                     Connect & Fetch Projects
                 </button>
             </div>
 
-            <!-- Error Message Container -->
             <div id="error-message" class="status-message error"></div>
 
         </form>
 
-        <!-- Results Section (Initially Hidden) -->
         <div id="results-container" style="display: none;">
-            <h2 class="results-title">Available Projects</h2>
-            
-            <!-- Loader -->
+            <h2 class="results-title">Fetcher Output</h2>
             <div id="loader" style="display: none;"></div>
-    
-            <!-- Project List -->
-            <ul id="project-list">
-                <!-- Projects will be injected here by JS -->
-            </ul>
-            <!-- Project Details Panel -->
-            <div id="project-details">
-                <!-- Read-only or Edit Form will be injected here by JS -->
-            </div>
+            <pre id="fetcher-output" class="code-output"></pre>
         </div>
 
     </div>
     
-    <!-- JavaScript for background effects AND API logic -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
 
@@ -797,895 +490,85 @@
                 animateParticles();
             }
 
-            // --- 🎬 JIRA API Fetch Script ---
+            // --- 🎬 Run Python Fetcher Script ---
             const authForm = document.getElementById('jira-auth-form');
             const fetchButton = document.getElementById('fetch-button');
             const errorMessage = document.getElementById('error-message');
             
             const resultsContainer = document.getElementById('results-container');
             const loader = document.getElementById('loader');
-            const projectList = document.getElementById('project-list');
-            const useProxyEl = document.getElementById('use-proxy');
-            const detailsPanel = document.getElementById('project-details');
+            const outputEl = document.getElementById('fetcher-output');
 
-            let lastAuth = null; // { domain, email, token, useProxy }
-            let currentProjectData = null; // Holds the data for the selected project
-
-            // --- 1. Top-Level Submit Handler (Fetches Project List) ---
+            // --- Submit handler: run jira_fetcher.py via backend and display output ---
             authForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                
-                // 0. Get form data
+
                 const domain = normalizeDomain(document.getElementById('jira-domain').value);
                 const email = document.getElementById('jira-email').value;
                 const token = document.getElementById('jira-token').value;
-                const useProxy = !!(useProxyEl && useProxyEl.checked);
 
-                // 1. Reset UI
+                // Reset UI
                 fetchButton.disabled = true;
-                fetchButton.textContent = 'Fetching...';
+                fetchButton.textContent = 'Running...';
                 loader.style.display = 'block';
                 errorMessage.style.display = 'none';
-                resultsContainer.style.display = 'block'; // Show container to show loader
-                projectList.innerHTML = '';
-                if (detailsPanel) { detailsPanel.style.display = 'none'; detailsPanel.innerHTML = ''; }
+                resultsContainer.style.display = 'block';
+                outputEl.textContent = '';
 
-                // 2. Validate
                 if (!domain || !email || !token) {
                     showStatusMessage('Please fill in all Jira authentication fields.', 'error', errorMessage);
                     resetFetchButton();
+                    loader.style.display = 'none';
                     return;
                 }
 
                 try {
-                    // 4. Make API call
-                    let projects;
-                    if (useProxy) {
-                        console.log('Using local proxy to call Jira...');
-                        const data = await fetchProjectListViaProxy(domain, email, token);
-                        projects = data.values;
-                    } else {
-                        // Keep a short, friendly simulation for non-proxy path
-                        await new Promise(r => setTimeout(r, 1200));
-                        projects = [
-                            { id: '10001', key: 'PROD', name: 'Produck Main App' },
-                            { id: '10002', key: 'WEB', name: 'Company Website' },
-                            { id: '10003', key: 'API', name: 'Internal API' }
-                        ];
-                        showStatusMessage("Simulated data shown. For real Jira results, check 'Use local proxy' and click Fetch.", "info", errorMessage);
+                    const runResp = await fetch('http://localhost:3000/api/jira_fetcher/run', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ domain, email, apiToken: token, verbose: true })
+                    });
+                    if (!runResp.ok) {
+                        const t = await runResp.text();
+                        throw new Error(`Server error (${runResp.status}): ${t}`);
                     }
-                    
-                    // Save credentials for subsequent detail fetches
-                    lastAuth = { domain, email, token, useProxy };
-                    populateResults(projects);
-
-                } catch (error) {
-                    handleApiError(error);
+                    const { code, stdout, stderr } = await runResp.json();
+                    const combined = [
+                        `Exit code: ${code}`,
+                        stderr ? `\n[stderr]\n${stderr}` : '',
+                        stdout ? `\n[stdout]\n${stdout}` : ''
+                    ].join('');
+                    outputEl.textContent = combined.trim();
+                } catch (err) {
+                    handleApiError(err);
                 } finally {
                     resetFetchButton();
                     loader.style.display = 'none';
                 }
             });
-
-            // --- 2. Project List Click Handler (Fetches Details) ---
-            projectList.addEventListener('click', async (e) => {
-                const li = e.target.closest('li');
-                if (!li) return;
-
-                const projectIdOrKey = li.dataset.projectId; // Use key or ID
-                const projectName = li.dataset.projectName;
-
-                // Active item visuals
-                projectList.querySelectorAll('li').forEach(item => item.classList.remove('active'));
-                li.classList.add('active');
-
-                // If we don’t have auth saved yet, ask user to fetch first
-                if (!lastAuth) {
-                    showStatusMessage('Please fetch projects first.', 'error', errorMessage);
-                    return;
-                }
-
-                // Show loading state in details panel
-                detailsPanel.style.display = 'block';
-                detailsPanel.innerHTML = '<div id="detail-loader" style="width: 24px; height: 24px; border: 2px solid #facc15; border-bottom-color: transparent; border-radius: 50%; margin: 2rem auto; animation: spin 1s linear infinite;"></div>';
-                detailsPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-                try {
-                    let payload;
-                    if (lastAuth.useProxy) {
-                        payload = await fetchProjectDetailsViaProxy(projectIdOrKey);
-                    } else {
-                        // Simulated details when not using proxy
-                        await new Promise(r => setTimeout(r, 800));
-                        payload = {
-                            project: { id: projectIdOrKey, key: projectName.match(/\((.*?)\)/)?.[1] || 'KEY', name: projectName.replace(/\(.*\)/,'').trim(), description: 'This is a <strong>simulated</strong> description.', projectTypeKey: 'software', isPrivate: false, lead: { displayName: 'Jane Doe', emailAddress: 'jane.doe@example.com' } },
-                            components: [{ name: 'Frontend' }, { name: 'Backend' }],
-                            versions: [{ name: 'v1.0', released: true }, { name: 'v1.1' }]
-                        };
-                        showStatusMessage("Showing simulated details. Enable 'Use local proxy' for live Jira data.", 'info', errorMessage);
-                    }
-                    
-                    currentProjectData = payload; // Save data for "Cancel" button
-                    renderProjectDetails(payload, false); // Render in read-only mode
-
-                } catch (err) {
-                    console.error('Details error:', err);
-                    showStatusMessage(`Could not load details: ${err.message}`, 'error', errorMessage);
-                    detailsPanel.style.display = 'none';
-                }
-            });
-            
-            // --- 3. Details Panel Event Handler (for Edit/Save/Cancel) ---
-            detailsPanel.addEventListener('click', async (e) => {
-                // --- Handle "Edit" Button Click ---
-                if (e.target.id === 'edit-project-button') {
-                    renderProjectDetails(currentProjectData, true); // Re-render in edit mode
-                }
-                
-                // --- Handle "Cancel" Button Click ---
-                if (e.target.id === 'cancel-edit-button') {
-                    renderProjectDetails(currentProjectData, false); // Re-render in read-only mode
-                }
-                
-                // --- Handle Task Edit/Save/Cancel/Move ---
-                
-                // Toggle edit area
-                if (e.target.classList.contains('toggle-edit')) {
-                    const issueLi = e.target.closest('li');
-                    const editArea = issueLi.querySelector('.issue-edit-area');
-                    const issueKey = issueLi.dataset.issueKey;
-                    
-                    const isOpen = editArea.style.display === 'block';
-                    if (!isOpen) {
-                        await loadTransitionsForIssue(issueLi, issueKey);
-                        editArea.style.display = 'block';
-                        e.target.textContent = 'Close';
-                    } else {
-                        editArea.style.display = 'none';
-                        e.target.textContent = 'Edit';
-                    }
-                }
-                
-                // Cancel issue edit
-                if (e.target.classList.contains('cancel-issue')) {
-                    const issueLi = e.target.closest('li');
-                    const editArea = issueLi.querySelector('.issue-edit-area');
-                    editArea.style.display = 'none';
-                    issueLi.querySelector('.toggle-edit').textContent = 'Edit';
-                }
-                
-                // Save issue
-                if (e.target.classList.contains('save-issue')) {
-                    await handleSaveIssue(e.target);
-                }
-                
-                // Apply transition
-                if (e.target.classList.contains('apply-transition')) {
-                    await handleApplyTransition(e.target);
-                }
-                
-                // Load tasks
-                if (e.target.id === 'load-issues-todo') loadIssues('To Do');
-                if (e.target.id === 'load-issues-inprog') loadIssues('In Progress');
-                if (e.target.id === 'issues-load-more') loadMoreIssues();
-                if (e.target.id === 'issues-recommended-fields') fetchAndPopulateRecommendedFields();
-            });
-            
-            // --- 4. Details Panel *Submit* Handler (for Project Save) ---
-            detailsPanel.addEventListener('submit', async (e) => {
-                if (e.target.id !== 'edit-project-form') return;
-                e.preventDefault();
-                await handleSaveProject(e.target);
-            });
-
-
-            // --- 5. Logic-Heavy Functions ---
-
-            // --- Project Edit/Save ---
-            async function handleSaveProject(formEl) {
-                const saveButton = formEl.querySelector('#save-project-button');
-                const statusMsg = formEl.querySelector('#edit-status-message');
-                
-                // Get data from form
-                const projectKey = formEl.dataset.projectKey;
-                const payload = {
-                    name: formEl.elements['project-name'].value,
-                    description: formEl.elements['project-description'].value
-                    // Note: Key/Lead are handled differently, see full-featured proxy
-                };
-
-                saveButton.disabled = true;
-                saveButton.textContent = 'Saving...';
-                showStatusMessage('Saving...', 'info', statusMsg);
-
-                try {
-                    let updatedProject;
-                    if (!lastAuth.useProxy) {
-                        // --- SIMULATION (Save) ---
-                        await new Promise(r => setTimeout(r, 1000));
-                        // Update the stored data with our fake changes
-                        currentProjectData.project.name = payload.name;
-                        currentProjectData.project.description = payload.description;
-                        updatedProject = currentProjectData.project; // Use this to update list
-                        showStatusMessage('Project "saved" (simulation).', 'success', statusMsg);
-                    } else {
-                        // --- REAL PROXY CALL (Save) ---
-                        // Note: Proxy must be updated to handle 'description' and 'name'
-                        const resp = await updateProjectViaProxy(projectKey, payload);
-                        updatedProject = resp.project || resp;
-                        
-                        // Update stored data with the *real* response from the server
-                        currentProjectData.project.name = updatedProject.name;
-                        currentProjectData.project.description = updatedProject.description;
-                        
-                        showStatusMessage('Project saved successfully!', 'success', statusMsg);
-                    }
-                    
-                    // Also update the main project list
-                    const li = projectList.querySelector(`li[data-project-id="${currentProjectData.project.id}"]`);
-                    if(li) {
-                        li.textContent = `${updatedProject.name} (${updatedProject.key})`;
-                        li.dataset.projectName = updatedProject.name;
-                    }
-
-                    // After 1.5s, revert to read-only view
-                    setTimeout(() => {
-                        renderProjectDetails(currentProjectData, false);
-                    }, 1500);
-
-                } catch (error) {
-                    console.error('Save Error:', error);
-                    showStatusMessage(`Save failed: ${error.message}`, 'error', statusMsg);
-                    saveButton.disabled = false;
-                    saveButton.textContent = 'Save Changes';
-                }
-            }
-            
-            // --- Issue Editing/Saving ---
-            async function handleSaveIssue(saveButton) {
-                const issueLi = saveButton.closest('li');
-                const issueKey = issueLi.dataset.issueKey;
-                const statusLine = issueLi.querySelector('.issue-status-line');
-                
-                const payload = {
-                    summary: issueLi.querySelector('.edit-summary')?.value || '',
-                    descriptionText: issueLi.querySelector('.edit-description')?.value || '',
-                    labels: (issueLi.querySelector('.edit-labels')?.value || '').split(',').map(s => s.trim()).filter(Boolean),
-                    assigneeEmail: issueLi.querySelector('.edit-assignee-email')?.value || ''
-                };
-                
-                statusLine.textContent = 'Saving…';
-                saveButton.disabled = true;
-                try {
-                    if (lastAuth?.useProxy) {
-                        await updateIssueViaProxy(issueKey, payload);
-                        statusLine.textContent = 'Saved successfully. (Changes may take a moment to reflect)';
-                    } else {
-                        await new Promise(r => setTimeout(r, 600));
-                        statusLine.textContent = 'Simulated save complete. Enable proxy for live Jira updates.';
-                    }
-                } catch (e) {
-                    statusLine.textContent = `Save Error: ${e.message}`;
-                } finally {
-                    saveButton.disabled = false;
-                }
-            }
-            
-            // --- Issue Transitions ---
-            async function handleApplyTransition(moveButton) {
-                const issueLi = moveButton.closest('li');
-                const issueKey = issueLi.dataset.issueKey;
-                const statusLine = issueLi.querySelector('.issue-status-line');
-                const transSelect = issueLi.querySelector('.transition-select');
-                const transitionId = transSelect.value;
-                
-                if (!transitionId) {
-                    statusLine.textContent = 'Please select a status to move to.';
-                    return;
-                }
-                
-                statusLine.textContent = 'Moving…';
-                moveButton.disabled = true;
-                transSelect.disabled = true;
-                
-                try {
-                    if (lastAuth?.useProxy) {
-                        await doIssueTransition(issueKey, transitionId);
-                        statusLine.textContent = `Moved to "${transSelect.options[transSelect.selectedIndex].text}".`;
-                        // Visually update the status chip
-                        const statusChip = issueLi.querySelector('.detail-chip[data-type="status"]');
-                        if (statusChip) statusChip.textContent = transSelect.options[transSelect.selectedIndex].text;
-                    } else {
-                        await new Promise(r => setTimeout(r, 600));
-                        statusLine.textContent = 'Simulated move complete (proxy disabled).';
-                    }
-                     // Hide edit area on success
-                    setTimeout(() => {
-                        issueLi.querySelector('.issue-edit-area').style.display = 'none';
-                        issueLi.querySelector('.toggle-edit').textContent = 'Edit';
-                    }, 1500);
-                } catch (e) {
-                    statusLine.textContent = `Move Error: ${e.message}`;
-                } finally {
-                    moveButton.disabled = false;
-                    transSelect.disabled = false;
-                }
-            }
-            
-            async function loadTransitionsForIssue(issueLi, issueKey) {
-                const transSelect = issueLi.querySelector('.transition-select');
-                const statusLine = issueLi.querySelector('.issue-status-line');
-                
-                // Only load once
-                if (transSelect.options.length > 1) return;
-                
-                statusLine.textContent = 'Loading transitions…';
-                try {
-                    if (lastAuth?.useProxy) {
-                        const tr = await getIssueTransitions(issueKey);
-                        const options = (tr.transitions || []).map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-                        transSelect.innerHTML = `<option value="">Change status…</option>` + options;
-                        statusLine.textContent = '';
-                    } else {
-                        transSelect.innerHTML = `<option value="">Simulation only</option><option value="done">Done</option>`;
-                        statusLine.textContent = 'Enable proxy for real transitions.';
-                    }
-                } catch (e) {
-                    statusLine.textContent = `Transitions error: ${e.message}`;
-                }
-            }
-            
-            // --- Issue Loading & Paging ---
-            let issuePaging = { startAt: 0, maxResults: 10, total: 0, currentFilter: null, mode: null, cursorToken: null };
-            
-            async function loadIssues(filter) {
-                if (!lastAuth) { showStatusMessage('Please fetch projects first.', 'error', errorMessage); return; }
-
-                const statusEl = document.getElementById('issues-status');
-                const listEl = document.getElementById('issues-list');
-                const loadMoreBtn = document.getElementById('issues-load-more');
-                const modeEl = document.getElementById('issues-search-mode');
-                const fallbackEl = document.getElementById('issues-fallback-flag');
-                const excludeDescEl = document.getElementById('issues-exclude-desc');
-
-                issuePaging.startAt = 0;
-                issuePaging.currentFilter = filter || null;
-                issuePaging.cursorToken = null;
-                issuePaging.mode = null;
-
-                showStatusMessage('Loading issues…', 'info', statusEl);
-                listEl.innerHTML = '';
-                loadMoreBtn.style.display = 'none';
-                if (modeEl) modeEl.style.display = 'none';
-                if (fallbackEl) fallbackEl.style.display = 'none';
-
-                try {
-                    let data, issues;
-                    if (lastAuth.useProxy) {
-                        const excludeDescription = !!(excludeDescEl && excludeDescEl.checked);
-                        const fieldsOverride = parseFieldsOverride();
-                        data = await fetchIssuesViaProxy(
-                            currentProjectData.project.id || currentProjectData.project.key,
-                            filter || undefined,
-                            issuePaging.startAt,
-                            issuePaging.maxResults,
-                            excludeDescription,
-                            null,
-                            fieldsOverride
-                        );
-                        issues = Array.isArray(data.issues) ? data.issues : [];
-                        issuePaging.total = Number(data.total) || issues.length;
-                        if (data._searchMeta) {
-                            issuePaging.mode = data._searchMeta.endpoint || null;
-                            issuePaging.cursorToken = data._searchMeta.cursorToken || null;
-                            if (modeEl && issuePaging.mode) {
-                                modeEl.textContent = `Mode: ${issuePaging.mode}`;
-                                modeEl.style.display = 'inline';
-                            }
-                            if (fallbackEl) {
-                                const used = !!data._searchMeta.fallbackUsed;
-                                fallbackEl.style.display = used ? 'inline' : 'none';
-                            }
-                        }
-                    } else {
-                        // Simulated
-                        await new Promise(r => setTimeout(r, 600));
-                        issues = [
-                            { key: (currentProjectData.project.key||'PRJ')+'-1', fields: { summary: 'Sample task A', description: { type: 'doc', content: [{type:'paragraph', content: [{type:'text', text:'Example description'}]}]}, status: { name: 'To Do' }, assignee: { displayName: 'Jane Doe', emailAddress: 'jane@example.com' }, labels: ['demo','ui'], components: [{name:'Frontend'}], fixVersions: [{name:'v1.0'}] } },
-                            { key: (currentProjectData.project.key||'PRJ')+'-2', fields: { summary: 'Sample task B', description: null, status: { name: 'In Progress' }, assignee: null, labels: [], components: [], fixVersions: [] } },
-                        ];
-                        issuePaging.total = issues.length;
-                    }
-
-                    renderIssuesList(listEl, issues);
-                    showStatusMessage(`${issues.length} of ${issuePaging.total} loaded ${lastAuth.useProxy ? '' : '(simulation)'}`, 'info', statusEl);
-                    issuePaging.startAt += issues.length;
-                    const moreAvailable = issuePaging.cursorToken || (issuePaging.startAt < issuePaging.total);
-                    loadMoreBtn.style.display = moreAvailable ? 'inline-block' : 'none';
-
-                } catch (e) {
-                    showStatusMessage(e.message, 'error', statusEl);
-                }
-            }
-
-            async function loadMoreIssues() {
-                const statusEl = document.getElementById('issues-status');
-                const listEl = document.getElementById('issues-list');
-                const loadMoreBtn = document.getElementById('issues-load-more');
-                const excludeDescEl = document.getElementById('issues-exclude-desc');
-                const fallbackEl = document.getElementById('issues-fallback-flag');
-
-                if (!lastAuth?.useProxy) { showStatusMessage('Enable proxy for pagination.', 'info', statusEl); return; }
-
-                showStatusMessage('Loading more…', 'info', statusEl);
-                loadMoreBtn.disabled = true;
-                
-                try {
-                    const excludeDescription = !!(excludeDescEl && excludeDescEl.checked);
-                    const fieldsOverride = parseFieldsOverride();
-                    const data = await fetchIssuesViaProxy(
-                        currentProjectData.project.id || currentProjectData.project.key,
-                        issuePaging.currentFilter || undefined,
-                        issuePaging.startAt,
-                        issuePaging.maxResults,
-                        excludeDescription,
-                        issuePaging.cursorToken || null,
-                        fieldsOverride
-                    );
-                    const issues = Array.isArray(data.issues) ? data.issues : [];
-                    
-                    renderIssuesList(listEl, issues, { append: true }); // Append new issues
-                    
-                    if (data._searchMeta) {
-                        issuePaging.mode = data._searchMeta.endpoint || issuePaging.mode;
-                        issuePaging.cursorToken = data._searchMeta.cursorToken || null;
-                        if (fallbackEl) {
-                            const used = !!data._searchMeta.fallbackUsed;
-                            fallbackEl.style.display = used ? 'inline' : 'none';
-                        }
-                    }
-                    issuePaging.startAt += issues.length;
-                    const moreAvailable = issuePaging.cursorToken || (issuePaging.startAt < issuePaging.total);
-                    showStatusMessage(`${Math.min(issuePaging.startAt, issuePaging.total)} of ${issuePaging.total} loaded`, 'info', statusEl);
-                    loadMoreBtn.style.display = moreAvailable ? 'inline-block' : 'none';
-                } catch (e) {
-                    showStatusMessage(e.message, 'error', statusEl);
-                } finally {
-                    loadMoreBtn.disabled = false;
-                }
-            }
-
-
-            // --- 6. Rendering Functions ---
-
-            // Renders the *content* of the details panel (either read-only or edit form)
-            function renderProjectDetails(payload, isEditMode = false) {
-                if (!detailsPanel) return;
-                
-                const { project, components = [], versions = [] } = payload || {};
-                const p = project || {}; // Safe project object
-                
-                // Helper to sanitize text for display
-                const safe = (str) => str ? String(str).replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
-                // Helper to sanitize text for an input/textarea value
-                const safeVal = (str) => str ? String(str).replace(/"/g, '&quot;') : '';
-
-                let content = '';
-                
-                if (isEditMode) {
-                    // --- Render EDIT FORM ---
-                    content = `
-                        <form id="edit-project-form" data-project-key="${safeVal(p.key)}">
-                            
-                            <div class="detail-header">
-                                <h3>Edit Project</h3>
-                                <div class="detail-button-group">
-                                    <button type="button" id="cancel-edit-button" class="btn-secondary">Cancel</button>
-                                    <button type="submit" id="save-project-button">Save Changes</button>
-                                </div>
-                            </div>
-                            
-                            <!-- Status message area for save results -->
-                            <div id="edit-status-message" class="status-message"></div>
-                            
-                            <div class="detail-section">
-                                <h4>Project Name</h4>
-                                <input type="text" name="project-name" class="detail-input" value="${safeVal(p.name)}">
-                            </div>
-                            
-                            <!-- Key editing is complex and risky, omitted for this example -->
-                            <!--
-                            <div class="detail-section">
-                                <h4>Project Key</h4>
-                                <input type="text" name="project-key" class="detail-input" value="${safeVal(p.key)}">
-                            </div>
-                            -->
-                            
-                            <div class="detail-section">
-                                <h4>Description</h4>
-                                <textarea name="project-description" class="detail-textarea">${safe(p.description)}</textarea>
-                            </div>
-                        </form>
-                    `;
-                } else {
-                    // --- Render READ-ONLY View ---
-                    const lead = p.lead || {};
-                    const compItems = (components || []).slice(0, 10).map(c => `<li>${safe(c.name)}${c.description ? ` — ${safe(c.description)}` : ''}</li>`).join('');
-                    const verItems = (versions || []).slice(0, 10).map(v => `<li>${safe(v.name)}${v.released ? ' (released)' : ''}${v.archived ? ' (archived)' : ''}</li>`).join('');
-
-                    content = `
-                        <div class="detail-header">
-                            <h3>${safe(p.name)}</h3>
-                            <button type="button" id="edit-project-button" class="btn-secondary">Edit Project</button>
-                        </div>
-                        
-                        <div class="detail-meta">
-                            <span class="detail-chip">Key: ${safe(p.key)}</span>
-                            <span class="detail-chip">Type: ${safe(p.projectTypeKey)}</span>
-                            <span class="detail-chip">Visibility: ${p.isPrivate ? 'Private' : 'Public'}</span>
-                            <span class="detail-chip">ID: ${safe(p.id)}</span>
-                        </div>
-                        
-                        <div class="detail-section">
-                            <h4>Description</h4>
-                            <div class="detail-text description">${p.description ? p.description.replace(/<br\s*\/?>/gi, '\n') : '<span class="detail-empty">No description provided.</span>'}</div>
-                        </div>
-
-                        <div class="detail-section">
-                            <h4>Lead</h4>
-                            <ul class="detail-list">
-                                ${lead.displayName ? `<li>Name: ${safe(lead.displayName)}</li>` : ''}
-                                ${lead.emailAddress ? `<li>Email: ${safe(lead.emailAddress)}</li>` : ''}
-                                ${!lead.displayName && !lead.emailAddress ? '<li class="detail-empty">No lead information</li>' : ''}
-                            </ul>
-                        </div>
-
-                        <div class="detail-section">
-                            <h4>Components (${components ? components.length : 0})</h4>
-                            ${components && components.length ? `<ul class="detail-list">${compItems}</ul>` : `<div class="detail-empty">No components</div>`}
-                        </div>
-
-                        <div class="detail-section">
-                            <h4>Versions (${versions ? versions.length : 0})</h4>
-                            ${versions && versions.length ? `<ul class="detail-list">${verItems}</ul>` : `<div class="detail-empty">No versions</div>`}
-                        </div>
-                        
-                        <!-- NEW: Tasks Section -->
-                        <div class="detail-section">
-                            <h4>Tasks</h4>
-                            <div style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; margin-bottom:.5rem;">
-                                <button id="issues-recommended-fields" type="button" class="btn-secondary" title="Fetch curated field list and load">Recommended Fields</button>
-                                <label style="display:flex; align-items:center; gap:.4rem; font-size:.85rem; color:#d4d4d4;">
-                                    <input id="issues-exclude-desc" type="checkbox" style="width:14px;height:14px;" />
-                                    Faster: exclude description
-                                </label>
-                                <span id="issues-search-mode" style="margin-left:auto; font-size:.8rem; color:#a3a3a3; display:none;">Mode: —</span>
-                                <span id="issues-fallback-flag" title="Legacy or compatibility fallback was used" style="font-size:.8rem; color:#f97316; display:none;">Fallback used</span>
-                                <span id="issues-fallback-reason" style="font-size:.75rem; color:#facc15; display:none;">reason: —</span>
-                            </div>
-                            <textarea id="issues-fields-input" placeholder="Optional fields override (comma-delimited), leave blank for defaults" style="width:100%;margin-bottom:.6rem;min-height:60px;font-size:.75rem;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.12);color:#e5e5e5;border-radius:8px;padding:.5rem;line-height:1.4;"></textarea>
-                            <div id="issues-status" class="status-message info" style="display:none; text-align:left; padding: 0.5rem 0.75rem; font-size: 0.85rem; margin-top: 0.5rem;"></div>
-                            <ul id="issues-list"></ul>
-                            <button id="issues-load-more" type="button" class="btn-secondary" style="display:none; margin-top:.6rem;">Load more</button>
-                        </div>
-                    `;
-                }
-                
-                detailsPanel.innerHTML = content;
-                detailsPanel.style.display = 'block';
-            }
-            
-            // --- Renders the list of tasks ---
-            function renderIssuesList(container, issues, options = {}) {
-                const list = container;
-                if (!options.append) list.innerHTML = '';
-                
-                if (issues.length === 0 && !options.append) {
-                    list.innerHTML = `<li class="detail-empty" style="border:none; background:transparent; padding-left: 0;">No tasks found for this filter.</li>`;
-                    return;
-                }
-                
-                issues.forEach(issue => {
-                    const f = issue.fields || {};
-                    const labels = Array.isArray(f.labels) ? f.labels : [];
-                    const comps = Array.isArray(f.components) ? f.components.map(c => c.name).filter(Boolean) : [];
-                    const vers = Array.isArray(f.fixVersions) ? f.fixVersions.map(v => v.name).filter(Boolean) : [];
-                    const assigneeName = f.assignee?.displayName || 'Unassigned';
-                    const descText = plainTextFromDescription(f.description);
-
-                    const li = document.createElement('li');
-                    li.dataset.issueKey = issue.key; // Store the key
-
-                    li.innerHTML = `
-                        <div class="issue-header">
-                            <div class="name">
-                                <span>${issue.key}</span> — ${f.summary ? String(f.summary).replace(/</g,'&lt;') : ''}
-                            </div>
-                            <div class="controls">
-                                <span class="detail-chip" data-type="status" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.18); color:#d4d4d4;">${f.status?.name || 'Unknown'}</span>
-                                <span class="detail-chip" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.18); color:#d4d4d4;">${assigneeName}</span>
-                                <button class="toggle-edit btn-small" type="button">Edit</button>
-                            </div>
-                        </div>
-                        <div class="issue-meta">
-                            ${labels.map(l => `<span class="detail-chip" style="background:rgba(250,204,21,0.08); border-color:rgba(250,204,21,0.25); color:#facc15;">#${l.replace(/</g,'&lt;')}</span>`).join('')}
-                            ${comps.map(n => `<span class="detail-chip" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.16); color:#d4d4d4;">${n.replace(/</g,'&lt;')}</span>`).join('')}
-                            ${vers.map(n => `<span class="detail-chip" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.16); color:#d4d4d4;">${n.replace(/</g,'&lt;')}</span>`).join('')}
-                        </div>
-                        <div class="issue-edit-area">
-                            <div>
-                                <label>Summary</label>
-                                <input class="edit-summary" type="text" value="${(f.summary||'').toString().replace(/"/g,'&quot;')}" />
-                            </div>
-                            <div>
-                                <label>Description</label>
-                                <textarea class="edit-description" rows="3">${descText.replace(/</g,'&lt;')}</textarea>
-                            </div>
-                            <div>
-                                <label>Labels (comma separated)</label>
-                                <input class="edit-labels" type="text" value="${labels.join(', ')}" />
-                            </div>
-                            <div>
-                                <label>Assignee (email)</label>
-                                <input class="edit-assignee-email" type="email" value="${f.assignee?.emailAddress ? f.assignee.emailAddress.replace(/"/g,'&quot;') : ''}" placeholder="optional" />
-                            </div>
-                            <div class="issue-controls-row">
-                                <select class="transition-select">
-                                    <option value="">Change status…</option>
-                                </select>
-                                <button class="apply-transition btn-small-secondary" type="button">Move</button>
-                            </div>
-                            <div class="issue-controls-row" style="margin-top: 0.75rem;">
-                                <button class="save-issue btn-small" type="button">Save</button>
-                                <button class="cancel-issue btn-small-secondary" type="button">Cancel</button>
-                            </div>
-                            <div class="issue-status-line"></div>
-                        </div>
-                    `;
-                    list.appendChild(li);
-                });
-            }
-
-            // Populates the main list of projects
-            function populateResults(projects) {
-                loader.style.display = 'none';
-                resultsContainer.style.display = 'block';
-
-                if (!projects || projects.length === 0) {
-                    projectList.innerHTML = '<li>No projects found.</li>';
-                } else {
-                    projects.forEach(project => {
-                        const li = document.createElement('li');
-                        li.textContent = `${project.name} (${project.key})`;
-                        li.dataset.projectId = project.id; // Use ID for detail fetch
-                        li.dataset.projectName = project.name; // Store name for detail view
-                        projectList.appendChild(li);
-                    });
-                }
-            }
-
-
-            // --- 7. Helper Functions ---
-            
-            // --- Proxy Fetch (Project List) ---
-            async function fetchProjectListViaProxy(domain, email, token) {
-                const resp = await fetch('http://localhost:3000/api/jira/projects', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ domain, email, apiToken: token })
-                });
-                return handleProxyResponse(resp);
-            }
-
-            // --- Proxy Fetch (Project Details) ---
-            async function fetchProjectDetailsViaProxy(projectIdOrKey) {
-                const { domain, email, token } = lastAuth || {};
-                const resp = await fetch('http://localhost:3000/api/jira/project/details', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ domain, email, apiToken: token, projectIdOrKey })
-                });
-                return handleProxyResponse(resp);
-            }
-            
-            // --- Proxy Fetch (Update Project) ---
-            async function updateProjectViaProxy(projectIdOrKey, payload) {
-                 const { domain, email, token } = lastAuth || {};
-                 // This is the new endpoint your proxy server needs to handle
-                 const resp = await fetch('http://localhost:3000/api/jira/project/update', {
-                    method: 'PUT', // This should match your proxy
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        domain, 
-                        email, 
-                        apiToken: token, 
-                        projectIdOrKey, 
-                        name: payload.name, 
-                        description: payload.description 
-                    })
-                });
-                return handleProxyResponse(resp);
-            }
-            
-            // --- Proxy Fetch (Search Issues) ---
-            async function fetchIssuesViaProxy(projectIdOrKey, statusCategory, startAt = 0, maxResults = 10, excludeDescription = false, pageToken = null, fieldsOverride = null) {
-                const { domain, email, token } = lastAuth || {};
-                const bodyPayload = { domain, email, apiToken: token, projectIdOrKey, statusCategory, startAt, maxResults, excludeDescription, pageToken };
-                if (Array.isArray(fieldsOverride) && fieldsOverride.length) {
-                    bodyPayload.fields = fieldsOverride;
-                }
-                const resp = await fetch('http://localhost:3000/api/jira/issues/search', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(bodyPayload)
-                });
-                return handleProxyResponse(resp);
-            }
             
             // --- Proxy Fetch (Get Transitions) ---
-            async function getIssueTransitions(issueKey) {
-                const { domain, email, token } = lastAuth || {};
-                const resp = await fetch('http://localhost:3000/api/jira/issue/transitions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ domain, email, apiToken: token, issueKey })
-                });
-                return handleProxyResponse(resp);
-            }
+            // (Removed old getIssueTransitions and related Jira helpers.)
 
             // --- Proxy Fetch (Do Transition) ---
-            async function doIssueTransition(issueKey, transitionId) {
-                const { domain, email, token } = lastAuth || {};
-                const resp = await fetch('http://localhost:3000/api/jira/issue/transition', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ domain, email, apiToken: token, issueKey, transitionId })
-                });
-                return handleProxyResponse(resp);
-            }
+            // (Removed old doIssueTransition.)
             
             // --- Proxy Fetch (Resolve User Email) ---
-            async function resolveAccountIdByEmail(queryEmail) {
-                const { domain, email, token } = lastAuth || {};
-                const resp = await fetch('http://localhost:3000/api/jira/user/accountIdByEmail', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ domain, email, apiToken: token, queryEmail })
-                });
-                const users = await handleProxyResponse(resp);
-                if (!Array.isArray(users) || users.length === 0) {
-                    throw new Error(`No user found with email: ${queryEmail}`);
-                }
-                return users[0].accountId;
-            }
+            // (Removed old resolveAccountIdByEmail.)
 
             // --- Proxy Fetch (Update Issue) ---
-            async function updateIssueViaProxy(issueKey, { summary, descriptionText, labels, assigneeEmail }) {
-                const { domain, email, token } = lastAuth || {};
-                let assigneeAccountId = undefined;
-                
-                // Only try to resolve if email is provided
-                if (assigneeEmail && assigneeEmail.trim()) {
-                    assigneeAccountId = await resolveAccountIdByEmail(assigneeEmail.trim());
-                }
-                
-                const resp = await fetch('http://localhost:3000/api/jira/issue/update', {
-                    method: 'PUT', // This should match your proxy
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        domain, 
-                        email, 
-                        apiToken: token, 
-                        issueKey, 
-                        summary, 
-                        descriptionText, 
-                        labels, 
-                        assigneeAccountId 
-                    })
-                });
-                return handleProxyResponse(resp);
-            }
+            // (Removed old updateIssueViaProxy.)
 
-            // Fetch recommended fields and populate textarea (simulation mode)
-            async function fetchAndPopulateRecommendedFields() {
-                const statusEl = document.getElementById('issues-status');
-                const excludeDescEl = document.getElementById('issues-exclude-desc');
-                const fieldsInput = document.getElementById('issues-fields-input');
-                // Simulate the expected output instead of calling backend.
-                const includeDescription = !(excludeDescEl && excludeDescEl.checked);
-                const simulatedFields = [
-                    'summary',
-                    'status',
-                    'statuscategorychangedate',
-                    'assignee',
-                    'reporter',
-                    'labels',
-                    'components',
-                    'fixVersions',
-                    'priority',
-                    'issuetype',
-                    'created',
-                    'updated',
-                    'duedate',
-                    'project',
-                    'parent'
-                ];
-                if (includeDescription) simulatedFields.push('description');
+            // --- Proxy Fetch (Recommended Fields) ---
+            // (Removed old fetchRecommendedFieldsViaProxy.)
 
-                if (fieldsInput) {
-                    fieldsInput.value = simulatedFields.join(', ');
-                }
-                // Build an example of the actual content values you would expect inside these fields
-                const exampleFields = {
-                    summary: 'Add OAuth 2.0 flow',
-                    status: { id: '3', name: 'In Progress' },
-                    statuscategorychangedate: '2025-09-15T12:34:56.789+0000',
-                    assignee: { accountId: 'abcd1234efgh5678', displayName: 'Jane Doe' },
-                    reporter: { accountId: 'ijkl9012mnop3456', displayName: 'John Smith' },
-                    labels: ['auth', 'frontend'],
-                    components: [{ name: 'Web' }],
-                    fixVersions: [{ name: 'v1.2.0' }],
-                    priority: { id: '3', name: 'Medium' },
-                    issuetype: { id: '10002', name: 'Story' },
-                    created: '2025-09-01T08:12:45.000+0000',
-                    updated: '2025-10-05T14:24:10.123+0000',
-                    duedate: '2025-11-01',
-                    project: { id: '10000', key: 'PRJ', name: 'Project X' },
-                    parent: { id: '10042', key: 'PRJ-42' },
-                    description: includeDescription
-                        ? 'Implement login with OAuth 2.0 and refresh tokens.'
-                        : undefined
-                };
-                if (!includeDescription) { delete exampleFields.description; }
+            // Fetch recommended fields and populate textarea
+            // (Removed old fetchAndPopulateRecommendedFields.)
 
-                // Ensure a preview element exists next to the fields input and render the example
-                const ensurePreviewEl = () => {
-                    let el = document.getElementById('issues-fields-preview');
-                    if (!el) {
-                        el = document.createElement('pre');
-                        el.id = 'issues-fields-preview';
-                        el.style.marginTop = '0.5rem';
-                        el.style.padding = '0.75rem';
-                        el.style.background = 'rgba(0,0,0,0.35)';
-                        el.style.border = '1px solid rgba(255,255,255,0.1)';
-                        el.style.borderRadius = '8px';
-                        el.style.whiteSpace = 'pre-wrap';
-                        el.style.wordBreak = 'break-word';
-                        if (fieldsInput && fieldsInput.parentNode) {
-                            fieldsInput.parentNode.insertBefore(el, fieldsInput.nextSibling);
-                        } else {
-                            const container = document.getElementById('project-details') || document.body;
-                            container.appendChild(el);
-                        }
-                    }
-                    return el;
-                };
-                const previewEl = ensurePreviewEl();
-                previewEl.textContent = JSON.stringify(exampleFields, null, 2);
-                showStatusMessage('Filled with expected recommended fields and showing example content below (simulation).', 'info', statusEl);
-            }
-            function parseFieldsOverride() {
-                const fieldsInput = document.getElementById('issues-fields-input');
-                if (!fieldsInput) return null;
-                const raw = fieldsInput.value.trim();
-                if (!raw) return null;
-                return raw.split(',').map(f => f.trim()).filter(Boolean);
-            }
+            // (Removed parseFieldsOverride.)
             
             // --- Generic Proxy Response Handler ---
-            async function handleProxyResponse(resp) {
-                const text = await resp.text();
-                if (!resp.ok) {
-                    let errorMsg = text;
-                    try { const json = JSON.parse(text); errorMsg = json.error || JSON.stringify(json.errorMessages || json); } catch(_){}
-                    throw new Error(`Proxy error (${resp.status}): ${errorMsg}`);
-                }
-                try {
-                    return JSON.parse(text); // Try parsing JSON
-                } catch (e) {
-                    return { ok: true, message: text }; // Return plain text if not JSON
-                }
-            }
+            // (Removed handleProxyResponse since old proxy routes removed.)
 
             // --- Show Status/Error Message ---
             // targetEl is either 'errorMessage' or the '#edit-status-message'
@@ -1706,7 +589,7 @@
                 console.error('Jira API Error:', error);
                 let userError = error.message;
                 if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-                    userError = 'Network error. If you are not using the proxy, this is likely CORS. Enable "Use local proxy" and try again.';
+                    userError = 'Network error. Could not connect to the local proxy at http://localhost:3000. Is it running?';
                 } else if (userError.includes('401')) {
                     userError = 'Error: Authentication failed. Please check your email, API token, and domain.';
                 }
@@ -1722,32 +605,7 @@
                 return d;
             }
             
-            // --- Helper to parse Jira ADF description to plain text ---
-            function plainTextFromDescription(desc) {
-                try {
-                    if (!desc) return '';
-                    if (typeof desc === 'string') return desc; // Already plain text
-                    
-                    // Check for ADF format
-                    if (typeof desc === 'object' && desc.type === 'doc' && Array.isArray(desc.content)) {
-                        let out = '';
-                        for (const block of desc.content) {
-                            if (block.type === 'paragraph' && Array.isArray(block.content)) {
-                                for (const node of block.content) {
-                                    if (node.type === 'text' && node.text) {
-                                        out += node.text;
-                                    }
-                                }
-                                out += '\n'; // Add newline for each paragraph
-                            }
-                        }
-                        return out.trim();
-                    }
-                } catch(e){
-                    console.warn('Could not parse description', e);
-                }
-                return ''; // Fallback
-            }
+            // (Removed description parsing helper; not needed for simple output.)
 
         });
     </script>
