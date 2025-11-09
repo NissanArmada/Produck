@@ -199,17 +199,24 @@
         /* 2. NEW: Dashboard Layout */
         #dashboard-view {
             display: none; /* Hidden by default */
+            display: flex;
             flex-direction: row;
-            flex-wrap: wrap;
+            flex-wrap: nowrap; /* keep panels side-by-side */
             gap: 2rem;
+            align-items: stretch; /* ensure panels match height */
+            min-height: 60vh; /* give the dashboard an explicit height so panels align */
         }
         #summary-panel {
-            flex: 1;
-            min-width: 400px;
+            flex: 1 1 48%; /* prefer equal half widths */
+            min-width: 300px;
+            max-width: 48%;
+            overflow-y: auto; /* make the left summary scrollable */
         }
         #graphs-panel {
-            flex: 1;
-            min-width: 400px;
+            flex: 1 1 48%; /* prefer equal half widths */
+            min-width: 300px;
+            max-width: 48%;
+            overflow-y: auto; /* graphs side scroll */
         }
 
         /* 2. NEW: Full Report Layout */
@@ -230,6 +237,8 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
             border-radius: 16px;
             height: 100%;
+            display: flex; /* allow panels to stretch and have internal scrolling */
+            flex-direction: column;
         }
 
 
@@ -302,6 +311,13 @@
             max-width: 100%;
             height: auto;
             border-radius: 8px;
+        }
+
+        /* Ensure cloned chart containers fill their parent panels */
+        #graphs-panel .chart-container,
+        #summary-panel .chart-container {
+            max-width: 100%;
+            width: 100%;
         }
         
         /* Gantt Chart Styling */
@@ -409,7 +425,7 @@
                     <!-- AI Summary will be injected here -->
                 </div>
                 <div id="graphs-panel" class="glass-panel">
-                    <h2>Key Visuals</h2>
+                    <!-- <h2>Key Visuals</h2> -->
                     <!-- Key graphs will be moved here -->
                 </div>
             </div>
@@ -486,8 +502,8 @@
                             renderEmbeddedCharts(); 
                             renderEmbeddedGantt();
 
-                            // 4. Move key charts to the dashboard
-                            moveImportantGraphs();
+                                            // 4. Move key charts to the dashboard (clone so originals remain)
+                                            moveImportantGraphs();
 
                             // 5. Show the dashboard and toggle button
                             dashboardView.style.display = "flex";
@@ -514,16 +530,40 @@
                 loadingMessage.innerText = `Error: ${message}. Is the Python server running?`;
             }
 
-            // 2. NEW: Function to move graphs from full report to dashboard
+            // 2. NEW: Function to clone graphs from full report into dashboard
             function moveImportantGraphs() {
-                // Note: These charts are rendered inside 'fullReportView' first
-                const budgetChart = document.getElementById('budgetChart')?.closest('.chart-container');
-                const timelineChart = document.getElementById('timelineChart')?.closest('.chart-container');
-                const userGrowthChart = document.getElementById('userGrowthChart')?.closest('.chart-container');
+                // Charts are rendered inside 'fullReportView' first.
+                // Instead of moving DOM nodes (which removes them from the full report),
+                // clone the chart containers and append the clones to the dashboard so
+                // the original graphs remain in the full report.
+                const chartIds = ['budgetChart', 'timelineChart', 'userGrowthChart'];
 
-                if (budgetChart) graphsPanel.appendChild(budgetChart);
-                if (timelineChart) graphsPanel.appendChild(timelineChart);
-                if (userGrowthChart) graphsPanel.appendChild(userGrowthChart);
+                chartIds.forEach(id => {
+                    const originalCanvas = document.getElementById(id);
+                    if (!originalCanvas) return;
+
+                    const origContainer = originalCanvas.closest('.chart-container') || originalCanvas.parentElement;
+                    if (!origContainer) return;
+
+                    // Deep clone the container (this clones the canvas element and data-* attrs)
+                    const clone = origContainer.cloneNode(true);
+
+                    // Ensure cloned canvas has a unique id to avoid duplicate ids on the page
+                    const clonedCanvas = clone.querySelector('canvas');
+                    if (clonedCanvas && clonedCanvas.id) {
+                        const newId = clonedCanvas.id + '-summary';
+                        // If we've already appended a clone with this id, skip
+                        if (graphsPanel.querySelector(`#${newId}`)) return;
+                        clonedCanvas.id = newId;
+                    }
+
+                    // Append the clone to the graphs panel (right side summary view)
+                    graphsPanel.appendChild(clone);
+                });
+
+                // After adding clones, initialize charts on any new canvases.
+                // renderEmbeddedCharts will skip already-initialized canvases.
+                renderEmbeddedCharts();
             }
             
             // 2. NEW: Event Listener for the toggle button
