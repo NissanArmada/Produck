@@ -21,7 +21,25 @@ USE_DEBUG_DATA = False
 # ---
 
 # --- Sample Data for Debugging (Updated) ---
-DEBUG_REPORT_DATA = """
+# 2. NEW: Debug data is now a JSON object with "summary" and "fullReport"
+DEBUG_REPORT_JSON = {
+    "summary": """
+# Project Dashboard: AI Meal Planner
+
+### Key Statistics
+- **Total Budget:** $500,000 - $615,000
+- **Total Timeline:** 35 Weeks
+- **Key Goal (Adoption):** 15,000 Users in 6 Months
+- **Key Goal (Utility):** $40/mo Average User Savings
+- **Critical Path:** 3.0 Core AI/ML Dev (8 Weeks)
+
+### Actionable Insights
+1.  **High-Impact Risk:** The project's success is critically dependent on securing reliable, real-time grocery sales data. This data pipeline (WBS 3.0) is the main risk and must be validated immediately.
+2.  **Budget Allocation:** The budget has been revised to allocate $200,000 (over 35% of the total) to WBS 3.0, reflecting its high priority and complexity.
+3.  **Go-to-Market:** The timeline for WBS 6.0 (Go-to-Market) has been extended to 6 weeks to properly support the aggressive user acquisition goal of 15,000 users.
+4.  **Metric Verification:** A new QA task, "Metric Verification Study," has been added to ensure the internal AI accuracy score directly correlates with the external goal of $40 in user savings.
+""",
+    "fullReport": """
 # AI Meal Planner App: Comprehensive Project Plan
 
 ## 1. Executive Summary
@@ -78,13 +96,13 @@ The scope outlines the boundaries of the project, focusing on the development of
 | 6.0 | Go-to-Market Strategy, Launch Execution, and User Acquisition |
 | 7.0 | Post-Launch Monitoring, Growth Hacking, and Metric Verification |
 
-### Key User Stories
-| ID | User Story | Acceptance Criteria |
+### Key Functional Requirements
+| ID | Requirement | Acceptance Criteria |
 | :--- | :--- | :--- |
-| **US-01** | As a new user, I want the system to generate highly personalized initial recommendations based on my profile setup so that I immediately see the value of the AI service. | Profile setup wizard completion, generation of initial output within 5 seconds, recommendations dynamically update based on profile changes. |
-| **US-02** | As an interested user, I want a seamless subscription flow so I can upgrade my account and access premium features without friction. | Successful payment processing via multiple methods (credit card, PayPal), immediate account status update to 'Premium', clear differentiation between free and paid features. |
-| **US-03** | As a frequent user, I want a clean and intuitive dashboard interface so I can easily track my progress and interact with my personalized results. | Key metrics visible on the main screen, navigation accessible on all pages, average time-to-task completion under 10 seconds. |
-| **US-04** | As a privacy-conscious user, I want to be confident that my personal data is secure and I can easily manage or delete my account information. | Implementation of industry-standard security protocols (e.g., encryption), clear GDPR/CCPA compliant data deletion process accessible via the settings menu. |
+| **FR-01** | The user must be able to generate personalized recommendations based on their profile. | Profile setup wizard completion, generation of initial output within 5 seconds, recommendations dynamically update based on profile changes. |
+| **FR-02** | The user must be able to seamlessly upgrade to a premium account. | Successful payment processing via multiple methods (credit card, PayPal), immediate account status update to 'Premium', clear differentiation between free and paid features. |
+| **FR-03** | The user must be able to interact with a clean and intuitive dashboard. | Key metrics visible on the main screen, navigation accessible on all pages, average time-to-task completion under 10 seconds. |
+| **FR-04** | The user must be able to manage their personal data and account settings. | Implementation of industry-standard security protocols (e.g., encryption), clear GDPR/CCPA compliant data deletion process accessible via the settings menu. |
 
 ## 5. Visual Timeline & Milestones
 **Reasoning**
@@ -97,7 +115,6 @@ The timeline confirms a **35-week development cycle**, highlighting that the Cor
 - **Milestone 4:** Successful Public Production Launch
 
 ### Projected High-Level Timeline (Gantt Chart)
-<!-- REVERTED back to the Gantt Chart HTML Table -->
 <div class="gantt-chart-container">
     <table class="gantt-chart">
         <thead>
@@ -194,12 +211,12 @@ This section confirms the commitment to system performance, security, and proces
 | Metric | Target | Link to Goal/Story |
 | :--- | :--- | :--- |
 | System Availability (Uptime) | 99.9% or higher during peak hours. | Technical Resilience |
-| Core Function Latency | Median load time < 3.0s (P95 < 5.0s). | US-01 |
-| Subscription Flow Success | 99.5% success rate for payment processing. | Goal 4, US-02 |
+| Core Function Latency | Median load time < 3.0s (P95 < 5.0s). | FR-01 |
+| Subscription Flow Success | 99.5% success rate for payment processing. | Goal 4, FR-02 |
 | AI Recommendation Accuracy | Internal QA score of 90% or higher. | Goal 2 |
 | **Metric Verification Study** | **Pilot program to correlate internal QA score with external $40 user savings.** | **Goal 2** |
 | User Satisfaction (CSAT) | 4.5/5.0 or higher re: meal plan relevance. | Goal 3 |
-| Security Vulnerability | Zero critical/high-severity vulnerabilities in prod. | US-04 |
+| Security Vulnerability | Zero critical/high-severity vulnerabilities in prod. | FR-04 |
 
 ### Communications Plan
 | Stakeholder | Frequency | Method | Purpose |
@@ -214,6 +231,7 @@ This section confirms the commitment to system performance, security, and proces
 2.  **CCB Analysis:** The Change Control Board (CCB) analyzes the CR's impact on the project baseline and core AI functionality.
 3.  **Decision & Documentation:** Approve, Reject, or Defer the CR. All approved changes are documented, the project plan is updated, and the change is scheduled for implementation.
 """
+}
 
 # --- Database Setup ---
 DATABASE_NAME = "jobs.db"
@@ -284,7 +302,7 @@ def clean_json_response(text):
         print(f"Cleaned string was: {json_str}")
         raise ValueError(f"Invalid JSON response from model: {e}")
 
-# --- AI Agent Definitions (ALL 14 AGENTS) ---
+# --- AI Agent Definitions (ALL 15 AGENTS) ---
 
 def agent_chief_strategist(form_data):
     """Agent 1: Defines SMART goals."""
@@ -331,14 +349,16 @@ def agent_solutions_architect(form_data, smart_goals):
     return clean_json_response(response.text)
 
 def agent_product_owner(wbs):
-    """Agent 4: Drafts User Stories."""
+    """Agent 4: Drafts Functional Requirements."""
     if not model: raise EnvironmentError("GEMINI_API_KEY is not configured.")
+    # 3. NEW PROMPT: Changed from User Stories to Requirements
     prompt = f"""
-    You are the Product Owner. Based on the WBS, draft 3-5 high-level user stories.
+    You are the Product Owner. Based on the WBS, draft 3-5 high-level functional requirements in the format "The user must be able to..."
     WBS: {json.dumps(wbs)}
-    Return *only* a JSON list of user stories.
+    Return *only* a JSON list of requirement objects.
     Example: [
-        {{"id": "US-01", "story": "As a busy professional, I want to see meal plans based on my diet so I can eat healthy.", "criteria": "Filters for vegan, keto, etc."}}
+        {{"id": "FR-01", "requirement": "The user must be able to generate personalized meal plans based on their dietary profile.", "criteria": "Profile includes allergies, diet preferences, and calorie goals."}},
+        {{"id": "FR-02", "requirement": "The user must be able to view local grocery sales related to their meal plan.", "criteria": "App must integrate with at least 3 major grocery chains."}}
     ]
     """
     response = model.generate_content(prompt)
@@ -435,17 +455,18 @@ def agent_communications_lead(form_data):
     response = model.generate_content(prompt)
     return clean_json_response(response.text)
 
-def agent_quality_assurance_lead(smart_goals, user_stories):
+def agent_quality_assurance_lead(smart_goals, requirements):
     """Agent 9: Defines high-level QA plan."""
     if not model: raise EnvironmentError("GEMINI_API_KEY is not configured.")
+    # 3. NEW PROMPT: Takes 'requirements' instead of 'user_stories'
     prompt = f"""
-    You are the QA Lead. Define a high-level quality plan based on the goals and user stories.
+    You are the QA Lead. Define a high-level quality plan based on the goals and functional requirements.
     GOALS: {json.dumps(smart_goals)}
-    USER STORIES: {json.dumps(user_stories)}
+    REQUIREMENTS: {json.dumps(requirements)}
     Return *only* a JSON list of key quality metrics.
     Example: [
         {{"metric": "App Store Rating", "target": "> 4.5 stars"}},
-        {{"metric": "User Story Acceptance", "target": "100% of criteria met before release."}}
+        {{"metric": "Requirement Acceptance", "target": "100% of criteria met for all FRs."}}
     ]
     """
     response = model.generate_content(prompt)
@@ -490,6 +511,41 @@ def agent_qa_critic(council_results):
     response = model.generate_content(prompt)
     return clean_json_response(response.text)
 
+# 1. --- NEW AGENT 12: EXECUTIVE SUMMARIZER ---
+def agent_executive_summarizer(council_results):
+    """Agent 12: Writes the statistics-heavy summary for the dashboard."""
+    if not model: raise EnvironmentError("GEMINI_API_KEY is not configured.")
+    
+    summary_data = json.dumps(council_results, indent=2)
+    
+    prompt = f"""
+    You are an Executive Summarizer. Your job is to create a text-only summary for a project dashboard.
+    This summary must be concise, statistics-heavy, and focused on actionable insights.
+    DO NOT include any graphs, charts, or markdown tables. Use bullet points for lists.
+    
+    FULL PLAN DATA:
+    {summary_data}
+    
+    Return *only* a Markdown string for the summary.
+    
+    Example:
+    # Project Dashboard: [Project Name]
+    
+    ### Key Statistics
+    - **Total Budget:** [Total Estimate, e.g., "$500k - $615k"]
+    - **Total Timeline:** [Total weeks, e.g., "35 Weeks"]
+    - **Key Goal (Adoption):** [e.g., "15,000 Users in 6 Months"]
+    - **Key Goal (Utility):** [e.g., "$40/mo Average User Savings"]
+    - **Critical Path:** [e.g., "3.0 Core AI/ML Dev (8 Weeks)"]
+    
+    ### Actionable Insights
+    1.  **High-Impact Risk:** The project's success is critically dependent on [Most important risk...].
+    2.  **Budget Allocation:** The budget has been revised to allocate [$$$] (over X%) to [WBS Task...].
+    3.  **Go-to-Market:** The timeline for [WBS Task] has been extended to [X weeks] to support [SMART Goal...].
+    """
+    response = model.generate_content(prompt)
+    return response.text
+
 def agent_reviser(council_results, qa_findings):
     """Agent 13: Attempts to fix the plan based on the Critic's findings."""
     if not model: raise EnvironmentError("GEMINI_API_KEY is not configured.")
@@ -519,7 +575,7 @@ def agent_reviser(council_results, qa_findings):
     
 
 def agent_report_synthesizer(council_results):
-    """Agent 12: Assembles the final report, including chart data."""
+    """Agent 14: Assembles the final report, including chart data."""
     if not model: raise EnvironmentError("GEMINI_API_KEY is not configured.")
     
     # --- 1. Extract data for charts (using new short_names) ---
@@ -567,18 +623,15 @@ def agent_report_synthesizer(council_results):
     
     # --- GANTT CHART HTML ---
     gantt_html = '<div class="gantt-chart-container">\n<table class="gantt-chart">\n<thead>\n<tr>\n<th>Task (WBS)</th>'
-    # Create headers for 36 weeks (9 cols * 4 weeks)
     total_weeks = 36
     for i in range(1, 10):
         gantt_html += f'<th colspan="4">Weeks {(i-1)*4+1}-{i*4}</th>'
     gantt_html += '\n</tr>\n</thead>\n<tbody>\n'
     
-    # Add a row for each timeline task
     for item in timeline_data:
         task_name = item.get('task', 'Unnamed Task')
         start = item.get('start_week', 1)
         duration = item.get('duration_weeks', 1)
-        # Find the full task name from WBS
         full_task_name = next((wbs_item['task'] for wbs_item in council_results.get('wbs', []) if wbs_item['short_name'] == task_name), task_name)
         
         gantt_html += f'<tr>\n<td>{full_task_name}</td>\n'
@@ -599,7 +652,8 @@ def agent_report_synthesizer(council_results):
     
     - Add a narrative "reasoning" section for each part.
     - Format lists, tables (WBS, Risks, QA, Comms), and quotes to be easy to read.
-    - **Use the full 'task' names** in the WBS Markdown table (from the `wbs` object), not the 'short_name'.
+    - **Use the full 'task' names** in the WBS Markdown table (from the `wbs` object).
+    - **Use the full 'requirement' text** in the Functional Requirements table.
     - Convert the list of risks into a Markdown table.
     
     - **IMPORTANT**: Embed the following HTML blocks EXACTLY as provided, in the correct sections:
@@ -631,7 +685,7 @@ def agent_report_synthesizer(council_results):
 # --- AI Council (Main Background Job) ---
 def run_ai_council_job(job_id, form_data_json):
     """
-    Runs the 12-agent council, calling the Gemini API for each step.
+    Runs the full AI council, including revision loops.
     This runs in a background thread.
     """
     
@@ -641,9 +695,10 @@ def run_ai_council_job(job_id, form_data_json):
         update_job_status(job_id, "processing", "Loading debug data...")
         db = get_db()
         cursor = db.cursor()
+        # 2. NEW: Save the debug JSON object as a string
         cursor.execute(
             "UPDATE jobs SET status = ?, final_report = ? WHERE job_id = ?",
-            ('complete', DEBUG_REPORT_DATA, job_id)
+            ('complete', json.dumps(DEBUG_REPORT_JSON), job_id)
         )
         db.commit()
         print("--- Injected debug data and marked job as complete. ---")
@@ -656,7 +711,6 @@ def run_ai_council_job(job_id, form_data_json):
         form_data = json.loads(form_data_json)
         council_results["initialBrief"] = form_data
         
-        # 6. --- NEW: Set Max Revisions from Form Data ---
         revision_setting = form_data.get("revision_rounds", "until-good")
         if revision_setting == "1":
             MAX_REVISIONS = 0
@@ -685,14 +739,14 @@ def run_ai_council_job(job_id, form_data_json):
             time.sleep(RATE_LIMIT_DELAY)
             
             update_job_status(job_id, "processing", f"[Rev {revision_count}] 4/13: Running Product Owner...")
-            council_results["userStories"] = agent_product_owner(council_results["wbs"])
+            # 3. UPDATED: Changed key to 'requirements'
+            council_results["requirements"] = agent_product_owner(council_results["wbs"])
             time.sleep(RATE_LIMIT_DELAY)
             
             update_job_status(job_id, "processing", f"[Rev {revision_count}] 5/13: Running Project Scheduler...")
             council_results["scheduler_output"] = agent_project_scheduler(council_results["wbs"])
             time.sleep(RATE_LIMIT_DELAY) 
 
-            # 2. --- NEW: Call Agent 5.5 ---
             update_job_status(job_id, "processing", f"[Rev {revision_count}] 6/13: Running Growth Planner...")
             council_results["user_growth"] = agent_growth_planner(council_results["smartGoals"])
             time.sleep(RATE_LIMIT_DELAY)
@@ -710,7 +764,8 @@ def run_ai_council_job(job_id, form_data_json):
             time.sleep(RATE_LIMIT_DELAY)
             
             update_job_status(job_id, "processing", f"[Rev {revision_count}] 10/13: Running QA Lead...")
-            council_results["qaPlan"] = agent_quality_assurance_lead(council_results["smartGoals"], council_results["userStories"])
+            # 3. UPDATED: Pass 'requirements'
+            council_results["qaPlan"] = agent_quality_assurance_lead(council_results["smartGoals"], council_results["requirements"])
             time.sleep(RATE_LIMIT_DELAY)
             
             update_job_status(job_id, "processing", f"[Rev {revision_count}] 11/13: Running Change Control...")
@@ -741,15 +796,26 @@ def run_ai_council_job(job_id, form_data_json):
             
         # --- End of while loop ---
 
-        # --- Run Agent 12: The Synthesizer (on the final, approved plan) ---
-        update_job_status(job_id, "processing", "13/13: Running Report Synthesizer...")
-        final_markdown_report = agent_report_synthesizer(council_results)
+        # --- Run Agent 12 (Summary) & 14 (Full Report) ---
+        update_job_status(job_id, "processing", "13/14: Generating Executive Summary...")
+        summary_markdown = agent_executive_summarizer(council_results)
+        time.sleep(RATE_LIMIT_DELAY)
+        
+        update_job_status(job_id, "processing", "14/14: Generating Full Report...")
+        full_report_markdown = agent_report_synthesizer(council_results)
+        
+        # 2. NEW: Create final JSON object
+        final_report_object = {
+            "summary": summary_markdown,
+            "fullReport": full_report_markdown
+        }
         
         db = get_db()
         cursor = db.cursor()
         cursor.execute(
             "UPDATE jobs SET status = ?, final_report = ? WHERE job_id = ?",
-            ('complete', final_markdown_report, job_id) 
+             # 2. NEW: Save the JSON object as a string
+            ('complete', json.dumps(final_report_object), job_id) 
         )
         db.commit()
         print(f"--- Job {job_id} complete. Final report saved. ---")
@@ -804,9 +870,10 @@ def get_project_status(job_id):
         return jsonify({"error": "Job not found"}), 404
 
     if job["status"] == "complete":
+        # 2. NEW: Parse the string and return the JSON object
         return jsonify({
             "status": "complete",
-            "final_report": job["final_report"]
+            "final_report": json.loads(job["final_report"])
         })
     
     if job["status"] == "failed":

@@ -131,7 +131,7 @@
 
         /* --- 3. Core UI Components --- */
         .container {
-            max-width: 900px;
+            max-width: 90%; /* UPDATED: Widen container for dashboard */
             margin: 0 auto;
             position: relative;
             z-index: 10;
@@ -172,8 +172,55 @@
             box-shadow: 0 0 15px rgba(250, 204, 21, 0.1);
         }
 
-        /* --- 5. Markdown Report Styling --- */
-        #report-output {
+        /* --- 2. NEW: Dashboard / Report Toggle --- */
+        .view-toggle {
+            text-align: center;
+            margin: 1.5rem 0;
+            display: none; /* Hidden until report is loaded */
+        }
+        #toggle-report-btn {
+            background-color: #facc15; 
+            color: #000000;
+            font-size: 1rem; 
+            font-weight: 700;
+            padding: 0.75rem 1.5rem; 
+            border: none; 
+            border-radius: 8px;
+            cursor: pointer; 
+            transition: all 0.2s ease-out;
+            box-shadow: 0 4px 15px rgba(250, 204, 21, 0.1);
+        }
+        #toggle-report-btn:hover {
+            background-color: #fde047;
+            box-shadow: 0 0 30px rgba(250, 204, 21, 0.36);
+            transform: scale(1.03);
+        }
+
+        /* 2. NEW: Dashboard Layout */
+        #dashboard-view {
+            display: none; /* Hidden by default */
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+        #summary-panel {
+            flex: 1;
+            min-width: 400px;
+        }
+        #graphs-panel {
+            flex: 1;
+            min-width: 400px;
+        }
+
+        /* 2. NEW: Full Report Layout */
+        #full-report-view {
+            display: none; /* Hidden by default */
+            max-width: 900px; /* Re-apply max-width */
+            margin: 0 auto;
+        }
+        
+        /* 2. NEW: Shared Glass Panel style */
+        .glass-panel {
             line-height: 1.7;
             padding: 2rem 2.5rem;
             background: linear-gradient(135deg, rgba(20, 20, 20, 0.7) 0%, rgba(15, 15, 15, 0.6) 100%);
@@ -182,8 +229,12 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
             border-radius: 16px;
+            height: 100%;
         }
-        #report-output h1 { 
+
+
+        /* --- 5. Markdown Report Styling --- */
+        #full-report-view h1, #summary-panel h1 { 
             font-size: 1.8rem; 
             font-weight: 900;
             margin-top: 1.5rem; 
@@ -192,30 +243,31 @@
             padding-bottom: 0.5rem; 
             color: #facc15;
         }
-        #report-output h2 { 
+        #full-report-view h2, #summary-panel h2 { 
             font-size: 1.5rem; 
             font-weight: 700;
             margin-top: 1.5rem; 
             margin-bottom: 1rem; 
             color: #ffffff;
         }
-        #report-output h3 { 
+        #full-report-view h3, #summary-panel h3 { 
             font-size: 1.2rem; 
             font-weight: 700; 
             margin-top: 1rem; 
             margin-bottom: 0.5rem; 
             color: #e5e5e5;
         }
-        #report-output ul, #report-output ol { 
+        #full-report-view ul, #summary-panel ul, 
+        #full-report-view ol, #summary-panel ol { 
             margin-left: 1.5rem; 
             margin-bottom: 1rem; 
         }
-        #report-output li { margin-bottom: 0.5rem; }
-        #report-output p { 
+        #full-report-view li, #summary-panel li { margin-bottom: 0.5rem; }
+        #full-report-view p, #summary-panel p { 
             margin-bottom: 1rem; 
             color: #d4d4d4; 
         }
-        #report-output blockquote {
+        #full-report-view blockquote, #summary-panel blockquote {
             padding: 0.8rem 1rem;
             margin-bottom: 1rem;
             background-color: rgba(250, 204, 21, 0.05);
@@ -223,19 +275,19 @@
             color: #e5e5e5;
             font-style: italic;
         }
-        #report-output table {
+        #full-report-view table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 1rem;
             font-size: 0.9rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        #report-output th, #report-output td {
+        #full-report-view th, #full-report-view td {
             border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 0.6rem;
             text-align: left;
         }
-        #report-output th {
+        #full-report-view th {
             background-color: rgba(255, 255, 255, 0.05);
             font-weight: 600;
         }
@@ -244,9 +296,9 @@
         .chart-container {
             position: relative;
             margin: 1rem auto;
-            max-width: 800px; /* Stretched for readability */
+            max-width: 800px;
         }
-        #report-output canvas {
+        #full-report-view canvas, #graphs-panel canvas {
             max-width: 100%;
             height: auto;
             border-radius: 8px;
@@ -345,8 +397,26 @@
             <div id="loading-message">
                 <!-- Status updates will appear here -->
             </div>
-            <div id="report-output">
-                <!-- The final report will be injected here -->
+
+            <!-- 2. NEW: View Toggle Button -->
+            <div class="view-toggle" id="view-toggle-btn-container">
+                <button id="toggle-report-btn">Show Full Report</button>
+            </div>
+
+            <!-- 2. NEW: Dashboard View -->
+            <div id="dashboard-view">
+                <div id="summary-panel" class="glass-panel">
+                    <!-- AI Summary will be injected here -->
+                </div>
+                <div id="graphs-panel" class="glass-panel">
+                    <h2>Key Visuals</h2>
+                    <!-- Key graphs will be moved here -->
+                </div>
+            </div>
+
+            <!-- 2. NEW: Full Report View (hidden by default) -->
+            <div id="full-report-view" class="glass-panel">
+                <!-- The full report will be injected here -->
             </div>
         </div>
     </div>
@@ -359,8 +429,15 @@
         document.addEventListener("DOMContentLoaded", () => {
             
             const loadingMessage = document.getElementById("loading-message");
-            const reportOutput = document.getElementById("report-output");
+            const dashboardView = document.getElementById("dashboard-view");
+            const summaryPanel = document.getElementById("summary-panel");
+            const graphsPanel = document.getElementById("graphs-panel");
+            const fullReportView = document.getElementById("full-report-view");
+            const toggleBtnContainer = document.getElementById("view-toggle-btn-container");
+            const toggleBtn = document.getElementById("toggle-report-btn");
+            
             let pollingInterval; 
+            let isDashboardView = true;
 
             const urlParams = new URLSearchParams(window.location.search);
             const job_id = urlParams.get('job_id');
@@ -370,7 +447,7 @@
                 loadingMessage.innerText = "Connecting to job...";
                 startPolling(job_id);
             } else {
-                handleError("No project ID provided. Please start from 'form.html' page.");
+                handleError("No project ID provided. Please start from the 'form.html' page.");
             }
             
             function startPolling(job_id) {
@@ -396,11 +473,25 @@
                             clearInterval(pollingInterval);
                             loadingMessage.style.display = "none";
                             
-                            const markdownReport = data.final_report;
-                            reportOutput.innerHTML = marked.parse(markdownReport);
+                            // 2. NEW: Data is now a JSON object {summary, fullReport}
+                            const reportData = data.final_report;
                             
+                            // 1. Populate the hidden full report
+                            fullReportView.innerHTML = marked.parse(reportData.fullReport);
+                            
+                            // 2. Populate the visible summary
+                            summaryPanel.innerHTML = marked.parse(reportData.summary);
+
+                            // 3. Render all charts (in their *original* locations)
                             renderEmbeddedCharts(); 
-                            renderEmbeddedGantt(); 
+                            renderEmbeddedGantt();
+
+                            // 4. Move key charts to the dashboard
+                            moveImportantGraphs();
+
+                            // 5. Show the dashboard and toggle button
+                            dashboardView.style.display = "flex";
+                            toggleBtnContainer.style.display = "block";
                             break;
                         
                         case "failed":
@@ -421,8 +512,34 @@
                 loadingMessage.style.display = "block";
                 loadingMessage.classList.add("error-message"); 
                 loadingMessage.innerText = `Error: ${message}. Is the Python server running?`;
-                reportOutput.innerHTML = "";
             }
+
+            // 2. NEW: Function to move graphs from full report to dashboard
+            function moveImportantGraphs() {
+                // Note: These charts are rendered inside 'fullReportView' first
+                const budgetChart = document.getElementById('budgetChart')?.closest('.chart-container');
+                const timelineChart = document.getElementById('timelineChart')?.closest('.chart-container');
+                const userGrowthChart = document.getElementById('userGrowthChart')?.closest('.chart-container');
+
+                if (budgetChart) graphsPanel.appendChild(budgetChart);
+                if (timelineChart) graphsPanel.appendChild(timelineChart);
+                if (userGrowthChart) graphsPanel.appendChild(userGrowthChart);
+            }
+            
+            // 2. NEW: Event Listener for the toggle button
+            toggleBtn.addEventListener('click', () => {
+                isDashboardView = !isDashboardView;
+                if (isDashboardView) {
+                    dashboardView.style.display = "flex";
+                    fullReportView.style.display = "none";
+                    toggleBtn.innerText = "Show Full Report";
+                } else {
+                    dashboardView.style.display = "none";
+                    fullReportView.style.display = "block";
+                    toggleBtn.innerText = "Show Dashboard";
+                }
+            });
+
 
             // --- FIXED: Gantt Chart Rendering Function ---
             function renderEmbeddedGantt() {
@@ -432,7 +549,6 @@
                 const table = ganttContainer.querySelector('table');
                 if (!table) return;
                 
-                // Get total weeks from the last header's text
                 const lastHeader = table.querySelector('thead th:last-child');
                 if (!lastHeader) return;
                 
@@ -452,7 +568,6 @@
                         const barDiv = document.createElement('div');
                         barDiv.className = 'gantt-bar';
                         
-                        // --- NEW LOGIC ---
                         barDiv.style.left = `${((start - 1) / totalWeeks) * 100}%`;
                         barDiv.style.width = `${(duration / totalWeeks) * 100}%`;
                         
@@ -462,7 +577,7 @@
                         barDiv.appendChild(barLabel);
 
                         cell.appendChild(barDiv);
-                        bar.remove(); // Remove the original placeholder
+                        bar.remove();
                     }
                 });
             }
@@ -473,22 +588,20 @@
                 Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
 
                 const chartColors = [
-                    '#facc15', // yellow-500
-                    '#22c55e', // green-500
-                    '#3b82f6', // blue-500
-                    '#ec4899', // pink-500
-                    '#a855f7', // purple-500
-                    '#14b8a6', // teal-500
-                    '#f59e0b', // amber-500
-                    '#ef4444', // red-500
+                    '#facc15', '#22c55e', '#3b82f6', '#ec4899',
+                    '#a855f7', '#14b8a6', '#f59e0b', '#ef4444'
                 ];
-                // 1. UPDATED: Single color for bar/line charts
                 const singleChartColor = 'rgba(250, 204, 21, 0.6)';
                 const singleChartBorder = '#facc15';
 
-                const allCanvases = reportOutput.querySelectorAll('canvas[data-chart-type]');
+                const allCanvases = document.querySelectorAll('canvas[data-chart-type]');
                 
                 allCanvases.forEach(canvas => {
+                    // Check if chart already rendered (to avoid re-rendering on toggle)
+                    if (Chart.getChart(canvas)) {
+                        return;
+                    }
+                    
                     const ctx = canvas.getContext('2d');
                     const type = canvas.dataset.chartType;
                     const title = canvas.dataset.chartTitle;
@@ -513,7 +626,7 @@
                                 datasets: [{
                                     label: 'Value',
                                     data: values,
-                                    backgroundColor: singleChartColor, // 1. Use single color
+                                    backgroundColor: singleChartColor,
                                     borderColor: singleChartBorder,
                                     borderWidth: 1
                                 }]
@@ -533,7 +646,7 @@
                                 labels: labels,
                                 datasets: [{
                                     data: values,
-                                    backgroundColor: chartColors, // Use multi-color
+                                    backgroundColor: chartColors,
                                     borderColor: '#121212',
                                     borderWidth: 2,
                                 }]
@@ -547,7 +660,6 @@
                             }
                         };
                     } else if (type === 'horizontalBar') {
-                        // 4. THIS IS THE BUDGET/TIMELINE CHART
                         config = {
                             type: 'bar',
                             data: {
@@ -555,13 +667,13 @@
                                 datasets: [{
                                     label: 'Value',
                                     data: values,
-                                    backgroundColor: singleChartColor, // 1. Use single color
+                                    backgroundColor: singleChartColor,
                                     borderColor: singleChartBorder,
                                     borderWidth: 1
                                 }]
                             },
                             options: {
-                                indexAxis: 'y', // This makes it horizontal
+                                indexAxis: 'y',
                                 responsive: true,
                                 plugins: {
                                     legend: { display: false },
@@ -570,7 +682,6 @@
                             }
                         };
                     } else if (type === 'line') {
-                        // 1. USER ADOPTION GRAPH
                         config = {
                             type: 'line',
                             data: {
@@ -578,7 +689,7 @@
                                 datasets: [{
                                     label: 'Registered Users',
                                     data: values,
-                                    backgroundColor: 'rgba(250, 204, 21, 0.1)', // 1. Use yellow
+                                    backgroundColor: 'rgba(250, 204, 21, 0.1)',
                                     borderColor: '#facc15',
                                     borderWidth: 2,
                                     fill: true,
