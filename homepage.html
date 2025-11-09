@@ -11,6 +11,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
 
+    <!-- Auth0 SDK -->
+    <script src="https://cdn.auth0.com/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
+
     <style>
         /* ========================================
         CORE STYLES (Adapted from Spec)
@@ -333,7 +336,7 @@
                 <!-- Nav Links -->
                 <div class="hidden md:flex items-center gap-10"> <!-- Reduced gap -->
                     <a href="homepage.html" class="text-neutral-300 hover:text-white transition">Home</a>
-                    <a href="products.html" class="text-neutral-300 hover:text-white transition">Products</a>
+                    <a href="#" id="products-link" class="text-neutral-300 hover:text-white transition">Products</a>
                     <a href="chat.html" class="text-neutral-300 hover:text-white transition">Chat</a>
                 </div>
                 
@@ -455,6 +458,50 @@
     ========================================
     -->
     <script>
+        // Auth0 Configuration
+        let auth0Client = null;
+        const auth0Config = {
+            domain: AUTH_DOMAIN,
+            clientId: AUTH_ID,
+            authorizationParams: {
+                redirect_uri: window.location.origin
+            }
+        };
+
+        // Initialize Auth0
+        async function initAuth0() {
+            try {
+                auth0Client = await auth0.createAuth0Client(auth0Config);
+                setupProductsNavigation();
+            } catch (e) {
+                console.error("Auth0 initialization error:", e);
+            }
+        }
+
+        // Setup Products Navigation
+        async function setupProductsNavigation() {
+            const productsLink = document.getElementById('products-link');
+            if (productsLink) {
+                productsLink.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    try {
+                        const isAuthenticated = await auth0Client.isAuthenticated();
+                        if (isAuthenticated) {
+                            window.location.href = 'productDashboard.html';
+                        } else {
+                            window.location.href = 'authentication.html';
+                        }
+                    } catch (err) {
+                        console.error('Error checking authentication:', err);
+                        window.location.href = 'authentication.html';
+                    }
+                });
+            }
+        }
+
+        // Initialize Auth0 when the page loads
+        window.addEventListener('load', initAuth0);
+
         document.addEventListener('DOMContentLoaded', () => {
 
             // --- Mouse-Following Glow Effect ---
